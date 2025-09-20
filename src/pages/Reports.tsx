@@ -108,7 +108,7 @@ function Reports() {
             <h3 className="text-sm font-medium text-gray-600">Total de Estudiantes</h3>
             <BarChart3 className="h-5 w-5 text-blue-600" />
           </div>
-          <p className="text-2xl font-bold text-gray-900">0</p>
+          <p className="text-2xl font-bold text-gray-900">{students.length}</p>
           <p className="text-xs text-gray-500 mt-1">Activos en el programa</p>
         </div>
 
@@ -117,8 +117,8 @@ function Reports() {
             <h3 className="text-sm font-medium text-gray-600">Evaluaciones</h3>
             <BarChart3 className="h-5 w-5 text-green-600" />
           </div>
-          <p className="text-2xl font-bold text-gray-900">0</p>
-          <p className="text-xs text-gray-500 mt-1">Completadas este mes</p>
+          <p className="text-2xl font-bold text-gray-900">{assessments.length}</p>
+          <p className="text-xs text-gray-500 mt-1">Completadas en total</p>
         </div>
 
         <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
@@ -126,7 +126,13 @@ function Reports() {
             <h3 className="text-sm font-medium text-gray-600">Progreso Promedio</h3>
             <BarChart3 className="h-5 w-5 text-purple-600" />
           </div>
-          <p className="text-2xl font-bold text-gray-900">0%</p>
+          <p className="text-2xl font-bold text-gray-900">{
+            assessments.length > 0
+              ? `${Math.round(
+                  assessments.reduce((acc, a) => acc + (Object.values(a.indicators).filter(v => v === 'SA' || v === 'AP').length / Object.keys(a.indicators).length) * 100, 0) / assessments.length
+                )}%`
+              : '0%'
+          }</p>
           <p className="text-xs text-gray-500 mt-1">En todas las etapas</p>
         </div>
 
@@ -135,7 +141,23 @@ function Reports() {
             <h3 className="text-sm font-medium text-gray-600">Autónomos</h3>
             <BarChart3 className="h-5 w-5 text-orange-600" />
           </div>
-          <p className="text-2xl font-bold text-gray-900">0%</p>
+          <p className="text-2xl font-bold text-gray-900">{
+            students.length > 0
+              ? `${Math.round(
+                  (students.filter(student => {
+                    const studentAssessments = assessments.filter(a => a.student_id === student.id);
+                    let totalIndicators = 0, sa = 0;
+                    studentAssessments.forEach(a => {
+                      Object.values(a.indicators).forEach(val => {
+                        totalIndicators++;
+                        if (val === 'SA') sa++;
+                      });
+                    });
+                    return totalIndicators > 0 && (sa / totalIndicators) * 100 > 60;
+                  }).length / students.length) * 100
+                )}`
+              : '0'
+          }%</p>
           <p className="text-xs text-gray-500 mt-1">Estudiantes que muestran independencia</p>
         </div>
       </div>
