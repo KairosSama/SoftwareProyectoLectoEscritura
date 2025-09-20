@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Matriz + Preguntas Interactiva</title>
+<style>
+:root{
+ --green:#2ecc71; --blue:#3498db; --red:#e74c3c; --grey:#95a5a6;
+ --bg:#f4f6f8; --card:#fff; --shadow:0 4px 8px rgba(0,0,0,.08);
+}
+body{font-family:Segoe UI, sans-serif; background:var(--bg); margin:0; padding:20px;}
+h1{text-align:center; color:#2c3e50;}
+.matriz{display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:20px; margin-top:30px;}
+.etapa{background:var(--card); border-radius:12px; box-shadow:var(--shadow); padding:15px;}
+.etapa h3{margin:0; color:#2c3e50;}
+.estado{font-size:0.9em; margin-top:4px; font-weight:bold;}
+.subgrid{display:grid; grid-template-columns:repeat(2,1fr); grid-template-rows:repeat(2,60px); gap:8px; margin-top:10px;}
+.sub{display:flex; align-items:center; justify-content:center; border-radius:8px; color:#fff; font-weight:bold; transition:background 0.3s;}
+.green{background:var(--green);} .blue{background:var(--blue);} .red{background:var(--red);} .grey{background:var(--grey);}
+.sub span{font-size:.75em; text-align:center; padding:5px;}
+.preguntas{margin-top:40px;}
+.categoria{background:var(--card); border-radius:12px; box-shadow:var(--shadow); padding:15px; margin-bottom:20px;}
+.categoria h4{margin-top:0; color:#2c3e50;}
+.pregunta{margin:8px 0;}
+.etapa-titulo{font-size:1.2em; font-weight:bold; color:#2c3e50; margin-top:25px; margin-bottom:10px;}
+</style>
+</head>
+<body>
+
+<h1>Matriz de Avance + Preguntas</h1>
+
+<!-- Matriz -->
+<div class="matriz" id="matriz"></div>
+
+<!-- Preguntas -->
+<div class="preguntas" id="preguntas"></div>
+
+<script>
+window.onload = () => {
+const etapas = [
+  {
+    nombre: "Etapa 1: Desarrollo Perceptivo-Discriminativo",
+    categorias: [
+      {nombre:"Reconocimiento visual básico", preguntas:[
+        "¿Reconoce su propia fotografía?",
+        "¿Reconoce fotos de familiares o personas significativas?",
+        "¿Identifica partes del cuerpo en imágenes?",
+        "¿Reconoce objetos de uso común en láminas?",
+        "¿Identifica alimentos en imágenes?"
+      ]},
+      {nombre:"Identificación visual avanzada", preguntas:[
+        "¿Reconoce animales en láminas?",
+        "¿Identifica medios de transporte en imágenes?",
+        "¿Reconoce acciones representadas gráficamente?",
+        "¿Selecciona una imagen entre 3 opciones al ser nombrada?",
+        "¿Selecciona una imagen entre 6 opciones?"
+      ]},
+      {nombre:"Discriminación visual compleja", preguntas:[
+        "¿Selecciona una imagen entre 9 opciones?",
+        "¿Selecciona una imagen entre 12 opciones?",
+        "¿Asocia láminas iguales (1 a 1)?",
+        "¿Completa un loto de 3 imágenes?",
+        "¿Completa un loto de 6 imágenes?"
+      ]},
+      {nombre:"Clasificación y secuenciación", preguntas:[
+        "¿Agrupa imágenes por color (2 elementos)?",
+        "¿Agrupa imágenes por forma (2 elementos)?",
+        "¿Agrupa imágenes por tamaño (2 elementos)?",
+        "¿Ordena secuencias temporales de 3 imágenes?",
+        "¿Denomina objetos o imágenes conocidas (monosílabos o bisílabos)?"
+      ]}
+    ]
+  },
+  {
+    nombre: "Etapa 2: Percepción Global de Palabras Escritas",
+    categorias: [
+      {nombre:"Reconocimiento de palabras", preguntas:[
+        "¿Reconoce globalmente su nombre escrito?",
+        "¿Reconoce nombres de familiares cercanos escritos?",
+        "¿Reconoce palabras de objetos significativos (ej: 'agua', 'pan')?",
+        "¿Reconoce palabras de objetos de uso común (ej: 'mesa', 'silla')?",
+        "¿Reconoce palabras de alimentos (ej: 'leche', 'galleta')?"
+      ]},
+      {nombre:"Asociación palabra-imagen", preguntas:[
+        "¿Asocia tarjeta con foto a su cartel con palabra (nombre propio)?",
+        "¿Asocia tarjeta con foto a su cartel con palabra (familia)?",
+        "¿Asocia tarjeta con foto a su cartel con palabra (objetos)?",
+        "¿Reconoce globalmente verbos en tercera persona (ej: 'come', 'mira')?",
+        "¿Asocia tarjeta de acción con su cartel correspondiente?"
+      ]},
+      {nombre:"Gramática visual", preguntas:[
+        "¿Reconoce globalmente conjunciones o preposiciones (ej: 'y', 'en')?",
+        "¿Asocia tarjeta de conjunción/preposición con su cartel?",
+        "¿Reconoce globalmente adjetivos (ej: 'grande', 'bonito')?",
+        "¿Asocia tarjeta de adjetivo con su cartel?",
+        "¿Selecciona un cartel entre 2 opciones al ser nombrado?"
+      ]},
+      {nombre:"Producción de frases", preguntas:[
+        "¿Selecciona un cartel entre 3 opciones?",
+        "¿Clasifica carteles por categoría (ej: alimentos, animales)?",
+        "¿Forma frases simples con carteles (sujeto + verbo)?",
+        "¿Forma frases con sujeto + verbo + sustantivo?",
+        "¿Reconoce globalmente al menos 20 palabras?"
+      ]}
+    ]
+  },
+  {
+    nombre: "Etapa 3: Reconocimiento de Sílabas",
+    categorias: [
+      {nombre:"Segmentación y composición", preguntas:[
+        "¿Divide en sílabas palabras conocidas (con modelo)?",
+        "¿Divide en sílabas palabras conocidas (sin modelo)?",
+        "¿Compone palabras con sílabas (con modelo)?",
+        "¿Compone palabras con sílabas (sin modelo)?",
+        "¿Reconoce sílabas directas (ej: 'pa', 'ma')?"
+      ]},
+      {nombre:"Sílabas complejas", preguntas:[
+        "¿Reconoce sílabas trabadas (ej: 'pan', 'tor')?",
+        "¿Reconoce sílabas inversas (ej: 'es', 'ar')?",
+        "¿Reconoce grupos consonánticos (ej: 'bra', 'pla')?",
+        "¿Lee palabras formadas por sílabas directas?",
+        "¿Lee palabras con sílabas trabadas?"
+      ]},
+      {nombre:"Lectura de patrones variados", preguntas:[
+        "¿Lee palabras con sílabas inversas?",
+        "¿Lee palabras con grupos consonánticos?",
+        "¿Amplía su vocabulario visual a 100 palabras?",
+        "¿Amplía su vocabulario visual a 150 palabras?",
+        "¿Amplía su vocabulario visual a 200 palabras?"
+      ]},
+      {nombre:"Comprensión inicial", preguntas:[
+        "¿Lee oraciones simples con palabras conocidas?",
+        "¿Lee párrafos cortos?",
+        "¿Responde preguntas simples sobre lo leído?",
+        "¿Utiliza claves contextuales para entender nuevas palabras?",
+        "¿Muestra interés por leer textos nuevos?"
+      ]}
+    ]
+  },
+  {
+    nombre: "Etapa 4: Progreso en la Lectura",
+    categorias: [
+      {nombre:"Fluidez y comprensión básica", preguntas:[
+        "¿Lee párrafos con fluidez?",
+        "¿Comprende instrucciones simples escritas?",
+        "¿Comprende instrucciones complejas (3+ elementos)?",
+        "¿Responde cuestionarios sobre textos leídos?",
+        "¿Identifica ideas principales en un texto?"
+      ]},
+      {nombre:"Comprensión avanzada", preguntas:[
+        "¿Identifica ideas secundarias?",
+        "¿Respeta signos de puntuación al leer?",
+        "¿Lee con entonación y prosodia adecuada?",
+        "¿Responde preguntas literales sobre lo leído?",
+        "¿Responde preguntas inferenciales?"
+      ]},
+      {nombre:"Análisis y vocabulario", preguntas:[
+        "¿Responde preguntas de extrapolación?",
+        "¿Identifica vocabulario desconocido en un texto?",
+        "¿Usa claves contextuales para inferir significados?",
+        "¿Utiliza el diccionario para buscar palabras?",
+        "¿Disfruta de la lectura como actividad recreativa?"
+      ]},
+      {nombre:"Aplicación y producción", preguntas:[
+        "¿Elige leer voluntariamente?",
+        "¿Lee textos funcionales (recetas, avisos, etc.)?",
+        "¿Comparte lo leído oralmente?",
+        "¿Escribe resúmenes breves de lo leído?",
+        "¿Muestra avance en la comprensión lectora?"
+      ]}
+    ]
+  }
+];
+
+// ------------------------ Generar MATRIZ ------------------------
+let matrizHTML = '';
+etapas.forEach((etapa, eIndex) => {
+  matrizHTML += `
+  <div class="etapa">
+    <h3>${etapa.nombre}</h3>
+    <div class="estado" id="estado-etapa${eIndex+1}">Sin tomar ⏳</div>
+    <div class="subgrid">
+  `;
+  etapa.categorias.forEach((cat, cIndex) => {
+    matrizHTML += `<div id="etapa${eIndex+1}-sub${cIndex+1}" class="sub grey"><span>${cat.nombre}</span></div>`;
+  });
+  matrizHTML += `
+    </div>
+  </div>`;
+});
+document.getElementById('matriz').innerHTML = matrizHTML;
+
+// ------------------------ Generar PREGUNTAS ------------------------
+let preguntasHTML = '';
+etapas.forEach((etapa, eIndex) => {
+  preguntasHTML += `<div class="etapa-titulo">Etapa ${eIndex+1}: ${etapa.nombre.split(":")[1]}</div>`;
+  etapa.categorias.forEach((cat, cIndex) => {
+    preguntasHTML += `<div class="categoria"><h4>${cat.nombre}</h4>`;
+    cat.preguntas.forEach((preg, pIndex) => {
+      let name = `etapa${eIndex+1}-sub${cIndex+1}-preg${pIndex}`;
+      preguntasHTML += `
+        <div class="pregunta">
+          ${preg}<br>
+          <label><input type="radio" name="${name}" value="si" data-etapa="${eIndex+1}" data-sub="${cIndex+1}"> Sí</label>
+          <label><input type="radio" name="${name}" value="no" data-etapa="${eIndex+1}" data-sub="${cIndex+1}" checked> No</label>
+        </div>`;
+    });
+    preguntasHTML += `</div>`;
+  });
+});
+document.getElementById('preguntas').innerHTML = preguntasHTML;
+
+// ------------------------ Lógica de Colores y Estados ------------------------
+function actualizarColores(){
+  for(let e=1; e<=etapas.length; e++){
+    let completas = 0;
+    let grises = 0;
+    let totalSubs = etapas[e-1].categorias.length;
+
+    for(let s=1; s<=totalSubs; s++){
+      let checks = document.querySelectorAll(`input[data-etapa="${e}"][data-sub="${s}"][value="si"]`);
+      let total = checks.length;
+      let marcadas = Array.from(checks).filter(chk => chk.checked).length;
+
+      let color = 'grey'; // por defecto, no cursado
+      if(marcadas === total && total > 0) {
+        color = 'green'; // aprobada
+      } 
+      else if(marcadas > 0) {
+        color = 'red'; // reprobada
+      }
+
+      document.querySelector(`#etapa${e}-sub${s}`).className = `sub ${color}`;
+      if(color === 'green') completas++;
+      if(color === 'grey') grises++;
+    }
+
+    // Estado de la etapa (sin "En proceso")
+    let estado = 'Sin tomar ⏳';
+    if(completas === totalSubs) {
+      estado = 'Lograda ✅';
+    } 
+    else if(grises === totalSubs) {
+      estado = 'Sin tomar ⏳';
+    } 
+    else if(completas === 0 && grises === 0) {
+      estado = 'Reprobada ❌';
+    }
+
+    document.querySelector(`#estado-etapa${e}`).textContent = estado;
+  }
+}
+
+// Activar evento
+document.addEventListener('change', e => {
+  if(e.target.matches('input[type="radio"]')){
+    actualizarColores();
+  }
+});
+};
+</script>
+
+</body>
+</html>
