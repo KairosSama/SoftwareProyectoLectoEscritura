@@ -60,7 +60,7 @@ function StudentDetail() {
 
   const renderProgressMatrix = () => {
     const modules = [
-      { id: 'lectoescritura', label: 'Lenguaje (Lectoescritura)' },
+      { id: 'lectoescritura', label: 'Lectoescritura' },
       { id: 'matematica', label: 'Matemática' }
     ];
     const stages = [1, 2, 3, 4];
@@ -275,10 +275,13 @@ function StudentDetail() {
                     <span className="text-sm text-gray-600">
                       {status.autonomousRate}% autónomo
                     </span>
-                    <button className="text-blue-600 hover:text-blue-700 text-sm font-medium flex items-center space-x-1">
+                    <Link
+                      to={`/assessments/${assessment.id}`}
+                      className="text-blue-600 hover:text-blue-700 text-sm font-medium flex items-center space-x-1"
+                    >
                       <Eye className="h-4 w-4" />
                       <span>Ver</span>
-                    </button>
+                    </Link>
                   </div>
                 </div>
               );

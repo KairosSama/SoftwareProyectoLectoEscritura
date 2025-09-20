@@ -20,6 +20,11 @@ export { calculateProgressStatus };
 
 // Mock API functions that simulate database operations
 export const mockApi = {
+  getAssessmentById: async (assessmentId: string): Promise<Assessment | null> => {
+    await new Promise(resolve => setTimeout(resolve, 200));
+    const assessments = getFromStorage('assessments') || [];
+    return assessments.find((a: Assessment) => a.id === assessmentId) || null;
+  },
   // Students
   getStudents: async (): Promise<Student[]> => {
     await new Promise(resolve => setTimeout(resolve, 300)); // Simulate network delay
