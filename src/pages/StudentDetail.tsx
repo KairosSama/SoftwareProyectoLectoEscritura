@@ -9,6 +9,7 @@ function StudentDetail() {
   const [student, setStudent] = useState<Student | null>(null);
   const [assessments, setAssessments] = useState<Assessment[]>([]);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [showAssessmentTypeModal, setShowAssessmentTypeModal] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -52,63 +53,58 @@ function StudentDetail() {
     return age;
   };
 
-  const getStageAssessments = (stage: number) => {
-    return assessments.filter(a => a.stage === stage);
+  // Agrupar evaluaciones por módulo
+  const getModuleAssessments = (moduleId: string, stage: number) => {
+    return assessments.filter(a => a.module_id === moduleId && a.stage === stage);
   };
 
   const renderProgressMatrix = () => {
+    const modules = [
+      { id: 'lectoescritura', label: 'Lenguaje (Lectoescritura)' },
+      { id: 'matematica', label: 'Matemática' }
+    ];
     const stages = [1, 2, 3, 4];
     return (
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {stages.map(stage => {
-          const stageAssessments = getStageAssessments(stage);
-          const latestAssessment = stageAssessments[0];
-          let status = { color: 'white' as const, completionRate: 0 };
-          
-          if (latestAssessment) {
-            status = calculateProgressStatus(latestAssessment);
-          }
+      <div className="space-y-8">
+        {modules.map(module => (
+          <div key={module.id}>
+            <h3 className="font-semibold text-lg text-gray-900 mb-4">{module.label}</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              {stages.map(stage => {
+                const stageAssessments = getModuleAssessments(module.id, stage);
+                const latestAssessment = stageAssessments[0];
+                let status: { color: 'white' | 'green' | 'red'; completionRate: number } = { color: 'white', completionRate: 0 };
+                if (latestAssessment) {
+                  status = calculateProgressStatus(latestAssessment) as { color: 'white' | 'green' | 'red'; completionRate: number };
+                }
 
-          return (
-            <div
-              key={stage}
-              className={`p-4 rounded-lg border-2 transition-colors duration-200 ${
-                status.color === 'green'
-                  ? 'bg-green-100 border-green-300'
-                  : status.color === 'red'
-                  ? 'bg-red-100 border-red-300'
-                  : 'bg-gray-100 border-gray-300'
-              }`}
-            >
-              <h3 className="font-semibold text-gray-900 mb-2">Stage {stage}</h3>
-              <p className="text-sm text-gray-600 mb-3">
-                {stageAssessments.length} assessment{stageAssessments.length !== 1 ? 's' : ''}
-              </p>
-              
-              {latestAssessment && (
-                <div className="space-y-1 text-xs text-gray-600">
-                  <p>Progress: {status.completionRate}%</p>
-                  <p>Last: {formatDate(latestAssessment.created_at)}</p>
-                </div>
-              )}
-              
-              <div className="mt-3 space-x-2">
-                <Link
-                  to={`/assessments/new/${id}?stage=${stage}`}
-                  className="inline-flex items-center space-x-1 text-xs bg-blue-600 text-white px-2 py-1 rounded hover:bg-blue-700 transition-colors duration-200"
-                >
-                  <Plus className="h-3 w-3" />
-                  <span>New</span>
-                </Link>
-                {stageAssessments.length > 0 && (
-                  <button className="text-xs text-blue-600 hover:text-blue-700">
-                    View All
-                  </button>
-                )}
-              </div>
+                return (
+                  <div
+                    key={stage}
+                    className={`p-4 rounded-lg border-2 transition-colors duration-200 ${
+                      status.color === 'green'
+                        ? 'bg-green-100 border-green-300'
+                        : status.color === 'red'
+                        ? 'bg-red-100 border-red-300'
+                        : 'bg-gray-100 border-gray-300'
+                    }`}
+                  >
+                    <h4 className="font-semibold text-gray-900 mb-2">Etapa {stage}</h4>
+                    <p className="text-sm text-gray-600 mb-3">
+                      {stageAssessments.length} evaluación{stageAssessments.length !== 1 ? 'es' : ''}
+                    </p>
+                    {latestAssessment && (
+                      <div className="space-y-1 text-xs text-gray-600">
+                        <p>Progreso: {status.completionRate}%</p>
+                        <p>Última: {formatDate(latestAssessment.created_at)}</p>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
-          );
-        })}
+          </div>
+        ))}
       </div>
     );
   };
@@ -133,7 +129,7 @@ function StudentDetail() {
     return (
       <div className="max-w-7xl mx-auto px-4 py-8">
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-900">Student not found</h1>
+          <h1 className="text-2xl font-bold text-gray-900">Estudiante no encontrado</h1>
         </div>
       </div>
     );
@@ -157,19 +153,53 @@ function StudentDetail() {
           </div>
           
           <div className="flex items-center space-x-3">
-            <Link
-              to={`/assessments/new/${student.id}`}
+            <button
+              onClick={() => setShowAssessmentTypeModal(true)}
               className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors duration-200 flex items-center space-x-2"
             >
               <Plus className="h-4 w-4" />
-              <span>New Assessment</span>
-            </Link>
+              <span>Nueva Evaluación</span>
+            </button>
+      {/* Modal de selección de tipo de evaluación */}
+      {showAssessmentTypeModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-lg p-8 w-full max-w-sm mx-auto">
+            <h2 className="text-xl font-semibold text-gray-900 mb-6 text-center">Selecciona el tipo de evaluación</h2>
+            <div className="flex flex-col space-y-4">
+              <button
+                className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors duration-200"
+                onClick={() => {
+                  setShowAssessmentTypeModal(false);
+                  window.location.href = `/assessment/lectoescritura/${student?.id}`;
+                }}
+              >
+                Lectoescritura
+              </button>
+              <button
+                className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors duration-200"
+                onClick={() => {
+                  setShowAssessmentTypeModal(false);
+                  window.location.href = `/assessment/matematica/${student?.id}`;
+                }}
+              >
+                Matemática
+              </button>
+              <button
+                className="mt-2 text-gray-500 hover:text-gray-700"
+                onClick={() => setShowAssessmentTypeModal(false)}
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
             <button
               onClick={() => setIsEditModalOpen(true)}
               className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors duration-200 flex items-center space-x-2"
             >
               <Edit className="h-4 w-4" />
-              <span>Edit</span>
+              <span>Editar</span>
             </button>
           </div>
         </div>
@@ -177,15 +207,15 @@ function StudentDetail() {
         <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-6 text-sm">
           <div className="flex items-center space-x-2 text-gray-600">
             <Calendar className="h-4 w-4" />
-            <span>Age: {calculateAge(student.birth_date)} years old</span>
+            <span>Edad: {calculateAge(student.birth_date)} años</span>
           </div>
           <div className="flex items-center space-x-2 text-gray-600">
             <Calendar className="h-4 w-4" />
-            <span>Born: {formatDate(student.birth_date)}</span>
+            <span>Nacimiento: {formatDate(student.birth_date)}</span>
           </div>
           <div className="flex items-center space-x-2 text-gray-600">
             <FileText className="h-4 w-4" />
-            <span>Started: {formatDate(student.program_start_date)}</span>
+            <span>Inicio: {formatDate(student.program_start_date)}</span>
           </div>
         </div>
       </div>
@@ -193,19 +223,19 @@ function StudentDetail() {
       {/* Progress Matrix */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-xl font-semibold text-gray-900">Progress Matrix</h2>
+          <h2 className="text-xl font-semibold text-gray-900">Matriz de Progreso</h2>
           <div className="flex items-center space-x-4 text-sm">
             <div className="flex items-center space-x-2">
               <div className="w-3 h-3 bg-green-500 rounded-full"></div>
-              <span>Autonomous</span>
+              <span>Autónomo</span>
             </div>
             <div className="flex items-center space-x-2">
               <div className="w-3 h-3 bg-red-500 rounded-full"></div>
-              <span>Needs Support</span>
+              <span>Con Apoyo</span>
             </div>
             <div className="flex items-center space-x-2">
               <div className="w-3 h-3 bg-gray-300 rounded-full"></div>
-              <span>Not Passed</span>
+              <span>No Logrado</span>
             </div>
           </div>
         </div>
@@ -215,7 +245,7 @@ function StudentDetail() {
 
       {/* Assessment History */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-        <h2 className="text-xl font-semibold text-gray-900 mb-6">Assessment History</h2>
+  <h2 className="text-xl font-semibold text-gray-900 mb-6">Historial de Evaluaciones</h2>
         
         {assessments.length > 0 ? (
           <div className="space-y-4">
@@ -233,21 +263,21 @@ function StudentDetail() {
                     }`}></div>
                     <div>
                       <h3 className="font-medium text-gray-900">
-                        Stage {assessment.stage} Assessment
+                        Etapa {assessment.stage} Evaluación
                       </h3>
                       <p className="text-sm text-gray-600">
-                        {formatDate(assessment.created_at)} • {status.completionRate}% completed
+                        {formatDate(assessment.created_at)} • {status.completionRate}% completado
                       </p>
                     </div>
                   </div>
                   
                   <div className="flex items-center space-x-3">
                     <span className="text-sm text-gray-600">
-                      {status.autonomousRate}% autonomous
+                      {status.autonomousRate}% autónomo
                     </span>
                     <button className="text-blue-600 hover:text-blue-700 text-sm font-medium flex items-center space-x-1">
                       <Eye className="h-4 w-4" />
-                      <span>View</span>
+                      <span>Ver</span>
                     </button>
                   </div>
                 </div>
@@ -257,19 +287,19 @@ function StudentDetail() {
         ) : (
           <div className="text-center py-8">
             <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">
-              No assessments yet
-            </h3>
-            <p className="text-gray-600 mb-4">
-              Start by creating the first assessment for {student.full_name}
-            </p>
-            <Link
-              to={`/assessments/new/${student.id}`}
-              className="inline-flex items-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors duration-200"
-            >
-              <Plus className="h-4 w-4" />
-              <span>Create Assessment</span>
-            </Link>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">
+                No hay evaluaciones aún
+              </h3>
+              <p className="text-gray-600 mb-4">
+                Comienza creando la primera evaluación para {student.full_name}
+              </p>
+              <Link
+                to={`/assessments/new/${student.id}`}
+                className="inline-flex items-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors duration-200"
+              >
+                <Plus className="h-4 w-4" />
+                <span>Crear Evaluación</span>
+              </Link>
           </div>
         )}
       </div>

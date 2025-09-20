@@ -38,15 +38,15 @@ function LoginPage() {
 
   const handleResetPassword = async () => {
     if (!formData.email) {
-      setError('Please enter your email address');
+      setError('Por favor ingresa tu correo electrónico');
       return;
     }
 
     try {
       await resetPassword(formData.email);
-      alert('Password reset email sent! Check your inbox.');
+      alert('¡Correo de restablecimiento de contraseña enviado! Revisa tu bandeja de entrada.');
     } catch (err: any) {
-      setError(err.message || 'Failed to send reset email');
+      setError(err.message || 'No se pudo enviar el correo de restablecimiento');
     }
   };
 

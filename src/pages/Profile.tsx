@@ -27,23 +27,23 @@ function Profile() {
     <div className="max-w-4xl mx-auto px-4 py-8 space-y-8">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold text-gray-900">Profile Settings</h1>
+        <h1 className="text-3xl font-bold text-gray-900">Configuración de Perfil</h1>
         <p className="text-gray-600 mt-2">
-          Manage your account information and preferences
+          Administra la información y preferencias de tu cuenta
         </p>
       </div>
 
       {/* Profile Card */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-xl font-semibold text-gray-900">Personal Information</h2>
+          <h2 className="text-xl font-semibold text-gray-900">Información Personal</h2>
           {!isEditing ? (
             <button
               onClick={() => setIsEditing(true)}
               className="text-blue-600 hover:text-blue-700 flex items-center space-x-1"
             >
               <Edit2 className="h-4 w-4" />
-              <span>Edit</span>
+              <span>Editar</span>
             </button>
           ) : (
             <div className="flex space-x-2">
@@ -52,14 +52,14 @@ function Profile() {
                 className="bg-blue-600 text-white px-3 py-1 rounded text-sm hover:bg-blue-700 transition-colors duration-200 flex items-center space-x-1"
               >
                 <Save className="h-4 w-4" />
-                <span>Save</span>
+                <span>Guardar</span>
               </button>
               <button
                 onClick={handleCancel}
                 className="bg-gray-600 text-white px-3 py-1 rounded text-sm hover:bg-gray-700 transition-colors duration-200 flex items-center space-x-1"
               >
                 <X className="h-4 w-4" />
-                <span>Cancel</span>
+                <span>Cancelar</span>
               </button>
             </div>
           )}
@@ -94,7 +94,7 @@ function Profile() {
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 <Mail className="h-4 w-4 inline mr-2" />
-                Email Address
+                Correo Electrónico
               </label>
               {isEditing ? (
                 <input
@@ -111,11 +111,11 @@ function Profile() {
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 <User className="h-4 w-4 inline mr-2" />
-                Role
+                Rol
               </label>
               <p className="text-gray-900 capitalize">{user?.role}</p>
               <p className="text-sm text-gray-500 mt-1">
-                Contact your administrator to change your role
+                Contacta al administrador para cambiar tu rol
               </p>
             </div>
           </div>
@@ -124,23 +124,23 @@ function Profile() {
 
       {/* Account Settings */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-        <h2 className="text-xl font-semibold text-gray-900 mb-6">Account Settings</h2>
+        <h2 className="text-xl font-semibold text-gray-900 mb-6">Configuración de Cuenta</h2>
         
         <div className="space-y-4">
           <div className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
             <div>
-              <h3 className="font-medium text-gray-900">Change Password</h3>
-              <p className="text-sm text-gray-600">Update your account password</p>
+              <h3 className="font-medium text-gray-900">Cambiar Contraseña</h3>
+              <p className="text-sm text-gray-600">Actualiza la contraseña de tu cuenta</p>
             </div>
             <button className="text-blue-600 hover:text-blue-700 font-medium text-sm">
-              Change Password
+              Cambiar Contraseña
             </button>
           </div>
 
           <div className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
             <div>
-              <h3 className="font-medium text-gray-900">Email Notifications</h3>
-              <p className="text-sm text-gray-600">Receive updates about assessments and reports</p>
+              <h3 className="font-medium text-gray-900">Notificaciones por Correo</h3>
+              <p className="text-sm text-gray-600">Recibe actualizaciones sobre evaluaciones y reportes</p>
             </div>
             <label className="relative inline-flex items-center cursor-pointer">
               <input type="checkbox" className="sr-only peer" defaultChecked />
@@ -150,11 +150,11 @@ function Profile() {
 
           <div className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
             <div>
-              <h3 className="font-medium text-gray-900">Two-Factor Authentication</h3>
-              <p className="text-sm text-gray-600">Add an extra layer of security to your account</p>
+              <h3 className="font-medium text-gray-900">Autenticación en Dos Pasos</h3>
+              <p className="text-sm text-gray-600">Agrega una capa extra de seguridad a tu cuenta</p>
             </div>
             <button className="text-blue-600 hover:text-blue-700 font-medium text-sm">
-              Enable 2FA
+              Activar 2FA
             </button>
           </div>
         </div>
@@ -162,15 +162,15 @@ function Profile() {
 
       {/* Danger Zone */}
       <div className="bg-white rounded-lg shadow-sm border border-red-200 p-6">
-        <h2 className="text-xl font-semibold text-red-900 mb-4">Danger Zone</h2>
+        <h2 className="text-xl font-semibold text-red-900 mb-4">Zona de Riesgo</h2>
         
         <div className="bg-red-50 p-4 rounded-lg">
-          <h3 className="font-medium text-red-900 mb-2">Delete Account</h3>
+          <h3 className="font-medium text-red-900 mb-2">Eliminar Cuenta</h3>
           <p className="text-sm text-red-700 mb-4">
-            Permanently delete your account and all associated data. This action cannot be undone.
+            Elimina permanentemente tu cuenta y todos los datos asociados. Esta acción no se puede deshacer.
           </p>
           <button className="bg-red-600 text-white px-4 py-2 rounded text-sm hover:bg-red-700 transition-colors duration-200">
-            Delete Account
+            Eliminar Cuenta
           </button>
         </div>
       </div>

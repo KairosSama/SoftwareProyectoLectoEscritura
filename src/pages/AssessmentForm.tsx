@@ -53,15 +53,19 @@ function AssessmentForm() {
   };
 
   const handleSave = async () => {
-    if (!studentId || !user) return;
+    if (!studentId || !user || !moduleId) return;
 
     setSaving(true);
     try {
+      // Filtrar solo respuestas válidas
+      const validIndicators = Object.fromEntries(
+        Object.entries(responses).filter(([, value]) => value === 'AP' || value === 'SA' || value === 'NP')
+      ) as Record<string, 'AP' | 'SA' | 'NP'>;
       const assessmentData = {
         student_id: studentId,
-        module_id: moduleId,
+        module_id: moduleId as string,
         stage: currentStage,
-        indicators: responses,
+        indicators: validIndicators,
         notes,
         evaluator_id: user.id
       };
@@ -71,7 +75,7 @@ function AssessmentForm() {
       navigate(`/students/${studentId}`);
     } catch (error) {
       console.error('Error saving assessment:', error);
-      alert('Error saving assessment. Please try again.');
+      alert('Error al guardar la evaluación. Por favor, intenta nuevamente.');
     } finally {
       setSaving(false);
     }
@@ -201,7 +205,7 @@ function AssessmentForm() {
             </h2>
             
             <div className="space-y-4">
-              {block.indicators.map((indicator, index) => {
+              {block.indicators.map((indicator: string, index: number) => {
                 const key = `${block.id}_${index}`;
                 const currentValue = responses[key] || '';
                 

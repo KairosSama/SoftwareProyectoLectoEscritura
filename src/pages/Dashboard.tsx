@@ -96,10 +96,10 @@ function Dashboard() {
       {/* Welcome Header */}
       <div>
         <h1 className="text-3xl font-bold text-gray-900">
-          Welcome back, {user?.fullName}
+          ¡Bienvenido de nuevo, {user?.fullName}!
         </h1>
         <p className="text-gray-600 mt-2">
-          Here's an overview of your assessment platform
+          Aquí tienes un resumen de tu plataforma de evaluación
         </p>
       </div>
 
@@ -108,7 +108,7 @@ function Dashboard() {
         <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600">Total Students</p>
+              <p className="text-sm font-medium text-gray-600">Total de Estudiantes</p>
               <p className="text-3xl font-bold text-gray-900">{stats.totalStudents}</p>
             </div>
             <div className="h-12 w-12 bg-blue-100 rounded-lg flex items-center justify-center">
@@ -120,7 +120,7 @@ function Dashboard() {
         <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600">Total Assessments</p>
+              <p className="text-sm font-medium text-gray-600">Total de Evaluaciones</p>
               <p className="text-3xl font-bold text-gray-900">{stats.totalAssessments}</p>
             </div>
             <div className="h-12 w-12 bg-green-100 rounded-lg flex items-center justify-center">
@@ -132,7 +132,7 @@ function Dashboard() {
         <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600">Recent (7 days)</p>
+              <p className="text-sm font-medium text-gray-600">Recientes (7 días)</p>
               <p className="text-3xl font-bold text-gray-900">{stats.recentAssessments}</p>
             </div>
             <div className="h-12 w-12 bg-orange-100 rounded-lg flex items-center justify-center">
@@ -144,7 +144,7 @@ function Dashboard() {
         <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600">Avg Progress</p>
+              <p className="text-sm font-medium text-gray-600">Progreso Promedio</p>
               <p className="text-3xl font-bold text-gray-900">{stats.averageProgress}%</p>
             </div>
             <div className="h-12 w-12 bg-purple-100 rounded-lg flex items-center justify-center">
@@ -156,14 +156,14 @@ function Dashboard() {
 
       {/* Quick Actions */}
       <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-        <h2 className="text-xl font-semibold text-gray-900 mb-4">Quick Actions</h2>
+        <h2 className="text-xl font-semibold text-gray-900 mb-4">Acciones Rápidas</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <Link
             to="/students"
             className="flex items-center space-x-3 p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-blue-400 hover:bg-blue-50 transition-colors duration-200"
           >
             <Plus className="h-5 w-5 text-gray-400" />
-            <span className="text-gray-600">Add New Student</span>
+            <span className="text-gray-600">Agregar Estudiante</span>
           </Link>
           
           <Link
@@ -171,7 +171,7 @@ function Dashboard() {
             className="flex items-center space-x-3 p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-green-400 hover:bg-green-50 transition-colors duration-200"
           >
             <ClipboardList className="h-5 w-5 text-gray-400" />
-            <span className="text-gray-600">Start Assessment</span>
+            <span className="text-gray-600">Iniciar Evaluación</span>
           </Link>
           
           <Link
@@ -179,7 +179,7 @@ function Dashboard() {
             className="flex items-center space-x-3 p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-purple-400 hover:bg-purple-50 transition-colors duration-200"
           >
             <BarChart3 className="h-5 w-5 text-gray-400" />
-            <span className="text-gray-600">View Reports</span>
+            <span className="text-gray-600">Ver Reportes</span>
           </Link>
         </div>
       </div>
@@ -189,9 +189,9 @@ function Dashboard() {
         {/* Recent Students */}
         <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-semibold text-gray-900">Recent Students</h2>
+            <h2 className="text-xl font-semibold text-gray-900">Estudiantes Recientes</h2>
             <Link to="/students" className="text-blue-600 hover:text-blue-700 text-sm font-medium">
-              View all
+              Ver todos
             </Link>
           </div>
           <div className="space-y-4">
@@ -202,16 +202,16 @@ function Dashboard() {
                     <p className="font-medium text-gray-900">{student.full_name}</p>
                     <p className="text-sm text-gray-600">{student.diagnosis}</p>
                   </div>
-                  <Link
-                    to={`/students/${student.id}`}
-                    className="text-blue-600 hover:text-blue-700 text-sm font-medium"
-                  >
-                    View
-                  </Link>
+                    <Link
+                      to={`/students/${student.id}`}
+                      className="text-blue-600 hover:text-blue-700 text-sm font-medium"
+                    >
+                      Ver
+                    </Link>
                 </div>
               ))
             ) : (
-              <p className="text-gray-500 text-center py-4">No students yet</p>
+              <p className="text-gray-500 text-center py-4">Aún no hay estudiantes</p>
             )}
           </div>
         </div>
@@ -219,9 +219,9 @@ function Dashboard() {
         {/* Recent Assessments */}
         <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-semibold text-gray-900">Recent Assessments</h2>
+            <h2 className="text-xl font-semibold text-gray-900">Evaluaciones Recientes</h2>
             <Link to="/assessments" className="text-blue-600 hover:text-blue-700 text-sm font-medium">
-              View all
+              Ver todas
             </Link>
           </div>
           <div className="space-y-4">
@@ -232,7 +232,7 @@ function Dashboard() {
                   <div key={assessment.id} className="flex items-center justify-between p-3 hover:bg-gray-50 rounded-lg transition-colors duration-200">
                     <div>
                       <p className="font-medium text-gray-900">{assessment.student_name}</p>
-                      <p className="text-sm text-gray-600">Stage {assessment.stage} Assessment</p>
+                      <p className="text-sm text-gray-600">Etapa {assessment.stage} Evaluación</p>
                     </div>
                     <div className="flex items-center space-x-2">
                       <div className={`w-3 h-3 rounded-full ${
@@ -245,7 +245,7 @@ function Dashboard() {
                 );
               })
             ) : (
-              <p className="text-gray-500 text-center py-4">No assessments yet</p>
+              <p className="text-gray-500 text-center py-4">Aún no hay evaluaciones</p>
             )}
           </div>
         </div>
