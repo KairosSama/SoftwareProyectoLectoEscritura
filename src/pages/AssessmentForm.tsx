@@ -96,6 +96,7 @@ function AssessmentForm() {
     };
   };
 
+
   if (loading) {
     return (
       <div className="max-w-7xl mx-auto px-4 py-8">
@@ -112,6 +113,18 @@ function AssessmentForm() {
       <div className="max-w-7xl mx-auto px-4 py-8">
         <div className="text-center">
           <h1 className="text-2xl font-bold text-gray-900">Estudiante no encontrado</h1>
+          <p className="text-gray-600 mt-2">Verifica que el estudiante exista y que el ID sea correcto.</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!currentBlocks || currentBlocks.length === 0) {
+    return (
+      <div className="max-w-7xl mx-auto px-4 py-8">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-gray-900">No hay bloques de evaluación definidos</h1>
+          <p className="text-gray-600 mt-2">No se encontraron bloques para el módulo <b>{moduleId}</b> y etapa <b>{currentStage}</b>. Verifica la configuración de bloques en assessmentData.</p>
         </div>
       </div>
     );
