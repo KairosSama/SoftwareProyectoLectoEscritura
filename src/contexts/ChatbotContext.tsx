@@ -37,6 +37,7 @@ export function ChatbotProvider({ children }: { children: React.ReactNode }) {
       timestamp: new Date()
     }
   ]);
+  const location = useLocation();
 
   const toggleChatbot = () => {
     setIsOpen(!isOpen);
@@ -52,13 +53,11 @@ export function ChatbotProvider({ children }: { children: React.ReactNode }) {
     setMessages(prev => [...prev, userMessage]);
 
     // Obtener estudiante activo (puedes ajustar esto según tu lógica)
-      // Obtener studentId automáticamente desde la URL si está en /students/:id
-      let studentId: string | null = null;
-      const location = useLocation();
-      const match = location.pathname.match(/students\/(\w{8}-\w{4}-\w{4}-\w{4}-\w{12})/);
-      if (match) {
-        studentId = match[1];
-      }
+    let studentId: string | null = null;
+    const match = location.pathname.match(/students\/(\w{8}-\w{4}-\w{4}-\w{4}-\w{12})/);
+    if (match) {
+      studentId = match[1];
+    }
     let pdfText = '';
     let studentData = '';
     if (studentId) {
@@ -85,8 +84,8 @@ export function ChatbotProvider({ children }: { children: React.ReactNode }) {
     // Llamar a Google Gemini
     let botText = 'No se pudo obtener respuesta.';
     try {
-  const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
-  const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${apiKey}`, {
+      const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${apiKey}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
