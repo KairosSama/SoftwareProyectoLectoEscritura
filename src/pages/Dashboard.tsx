@@ -31,6 +31,10 @@ function Dashboard() {
     try {
   const students = await getStudents();
   const assessments = await getAssessments();
+      // Aseguramos orden: más recientes primero
+      const assessmentsSorted = assessments
+        .slice()
+        .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
       // Calculate stats
       const totalStudents = students.length;
@@ -61,7 +65,7 @@ function Dashboard() {
       setRecentStudents(students.slice(0, 5));
       
       // Get student names for assessments
-      const assessmentsWithNames = assessments.slice(0, 5).map(assessment => {
+      const assessmentsWithNames = assessmentsSorted.slice(0, 5).map(assessment => {
         const student = students.find(s => s.id === assessment.student_id);
         return {
           ...assessment,

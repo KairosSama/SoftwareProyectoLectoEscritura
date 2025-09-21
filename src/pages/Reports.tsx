@@ -33,6 +33,8 @@ function Reports() {
       if (endDate) {
         filtered = filtered.filter(a => new Date(a.created_at) <= new Date(endDate));
       }
+      // Ordenar por fecha descendente para mostrar primero la evaluación más reciente
+      filtered = filtered.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
       setIndividualReport(filtered);
     } else {
       setIndividualReport([]);
@@ -57,7 +59,6 @@ function Reports() {
         if (totalIndicators > 0) {
           const saRate = (sa / totalIndicators) * 100;
           const apRate = (ap / totalIndicators) * 100;
-          const npRate = (np / totalIndicators) * 100;
           if (saRate > 60) autonomous++;
           else if (apRate > 50) support++;
           else notAchieved++;

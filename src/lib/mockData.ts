@@ -12,7 +12,12 @@ export const getAssessmentById = async (assessmentId: string): Promise<Assessmen
 };
 
 export const getAssessmentsByStudent = async (studentId: string): Promise<Assessment[]> => {
-  const { data, error } = await supabase.from('assessments').select('*').eq('student_id', studentId);
+  // Traer evaluaciones ordenadas de más reciente a más antigua para facilitar usar la última
+  const { data, error } = await supabase
+    .from('assessments')
+    .select('*')
+    .eq('student_id', studentId)
+    .order('created_at', { ascending: false });
   if (error) throw error;
   return data || [];
 };
