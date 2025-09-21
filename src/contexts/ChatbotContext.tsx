@@ -81,21 +81,18 @@ export function ChatbotProvider({ children }: { children: React.ReactNode }) {
     // Construir prompt
     const prompt = `Datos del estudiante:\n${studentData}\n\nPDFs:\n${pdfText}\n\nPregunta del profesor: ${text}`;
 
-    // Llamar a Google Gemini
+    // Llamar al endpoint backend Gemini
     let botText = 'No se pudo obtener respuesta.';
     try {
-      const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
-  const response = await fetch(`https://generativelanguage.googleapis.com/v1beta1/models/gemini-pro:generateContent?key=${apiKey}`, {
+      const response = await fetch('/api/gemini-chatbot', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }]
-        })
+        body: JSON.stringify({ prompt })
       });
       const result = await response.json();
-      botText = result.candidates?.[0]?.content?.parts?.[0]?.text || botText;
+      botText = result.answer || botText;
     } catch (err) {
       botText = 'Error al consultar Gemini.';
     }
