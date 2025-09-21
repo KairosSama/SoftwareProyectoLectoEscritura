@@ -85,7 +85,7 @@ export function ChatbotProvider({ children }: { children: React.ReactNode }) {
     let botText = 'No se pudo obtener respuesta.';
     try {
       const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
-      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=${apiKey}`, {
+  const response = await fetch(`https://generativelanguage.googleapis.com/v1beta1/models/gemini-pro:generateContent?key=${apiKey}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
