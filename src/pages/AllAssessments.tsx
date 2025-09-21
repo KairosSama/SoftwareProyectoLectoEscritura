@@ -22,6 +22,10 @@ function AllAssessments() {
     fetchData();
   }, []);
 
+  // Si el filtro de estudiante no corresponde a ningún estudiante, lo limpiamos
+  const validStudentIds = students.map(s => s.id);
+  const effectiveStudentFilter = validStudentIds.includes(studentFilter) ? studentFilter : '';
+
   const filteredAssessments = assessments.filter(a => {
     const student = students.find(s => s.id === a.student_id);
     const status = calculateProgressStatus(a);
@@ -30,7 +34,7 @@ function AllAssessments() {
     if (autonomyFilter === 'support') autonomyMatch = status.supportRate >= 50;
     if (autonomyFilter === 'not-achieved') autonomyMatch = status.completionRate < 50;
     let studentMatch = true;
-    if (studentFilter) studentMatch = a.student_id === studentFilter;
+    if (effectiveStudentFilter) studentMatch = a.student_id === effectiveStudentFilter;
     let searchMatch = true;
     if (searchTerm) {
       searchMatch = (student?.full_name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
