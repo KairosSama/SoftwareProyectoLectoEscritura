@@ -108,7 +108,7 @@ function AllAssessments() {
                         {student?.full_name || 'Estudiante desconocido'}
                       </h3>
                       <p className="text-sm text-gray-600">
-                        {a.module_id === 'lectoescritura' ? 'Lectoescritura' : 'Matemática'} • Etapa {a.stage}
+                        {(a.module_id === 'lectoescritura' ? 'Lectoescritura' : a.module_id === 'matematica' ? 'Matemática' : a.module_id)} • Etapa {a.stage}
                       </p>
                       <p className="text-xs text-gray-500">{new Date(a.created_at).toLocaleDateString('es-ES')}</p>
                     </div>

@@ -138,7 +138,7 @@ function LectoescrituraModule() {
                     }`}></div>
                     <div>
                       <h3 className="font-medium text-gray-900">{student?.full_name || 'Estudiante desconocido'}</h3>
-                      <p className="text-sm text-gray-600">Etapa {a.stage}</p>
+                      <p className="text-sm text-gray-600">Lectoescritura • Etapa {a.stage}</p>
                       <p className="text-xs text-gray-500">{new Date(a.created_at).toLocaleDateString('es-ES')}</p>
                     </div>
                   </div>

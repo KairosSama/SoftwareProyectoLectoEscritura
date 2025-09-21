@@ -1,3 +1,8 @@
+// Mapeo de nombres de materias
+const MODULE_NAMES: Record<string, string> = {
+  lectoescritura: 'Lectoescritura',
+  matematica: 'Matemática',
+};
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
@@ -236,7 +241,9 @@ function Dashboard() {
                   <div key={assessment.id} className="flex items-center justify-between p-3 hover:bg-gray-50 rounded-lg transition-colors duration-200">
                     <div>
                       <p className="font-medium text-gray-900">{assessment.student_name}</p>
-                      <p className="text-sm text-gray-600">Etapa {assessment.stage} Evaluación</p>
+                      <p className="text-sm text-gray-600">
+                        {MODULE_NAMES[assessment.module_id] || assessment.module_id} • Etapa {assessment.stage} Evaluación
+                      </p>
                     </div>
                     <div className="flex items-center space-x-2">
                       <div className={`w-3 h-3 rounded-full ${
