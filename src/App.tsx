@@ -15,6 +15,7 @@ import Reports from './pages/Reports';
 import Profile from './pages/Profile';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import AssessmentDetail from './pages/AssessmentDetail';
+import AllAssessments from './pages/AllAssessments';
 
 function App() {
   return (
@@ -111,6 +112,16 @@ function App() {
                   <ProtectedRoute>
                     <Navbar />
                     <Profile />
+                    <ChatbotWidget />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/all-assessments"
+                element={
+                  <ProtectedRoute>
+                    <Navbar />
+                    <AllAssessments />
                     <ChatbotWidget />
                   </ProtectedRoute>
                 }

@@ -224,7 +224,7 @@ function Dashboard() {
         <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-xl font-semibold text-gray-900">Evaluaciones Recientes</h2>
-            <Link to="/assessments" className="text-blue-600 hover:text-blue-700 text-sm font-medium">
+            <Link to="/all-assessments" className="text-blue-600 hover:text-blue-700 text-sm font-medium">
               Ver todas
             </Link>
           </div>
