@@ -2,7 +2,7 @@ import React from 'react';
 import { useEffect, useState } from 'react';
 import { BarChart3, Calendar } from 'lucide-react';
 import BarChart from '../components/BarChart';
-import { mockApi, Student, Assessment, calculateProgressStatus } from '../lib/supabase';
+import { getStudents, getAssessments, Student, Assessment, calculateProgressStatus } from '../lib/mockData';
 import jsPDF from 'jspdf';
 
 function Reports() {
@@ -16,8 +16,8 @@ function Reports() {
 
   useEffect(() => {
     async function fetchData() {
-      const s = await mockApi.getStudents();
-      const a = await mockApi.getAssessments();
+  const s = await getStudents();
+  const a = await getAssessments();
       setStudents(s);
       setAssessments(a);
     }

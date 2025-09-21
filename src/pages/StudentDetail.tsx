@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { mockApi, Student, Assessment, calculateProgressStatus } from '../lib/supabase';
+import { getStudent, getAssessmentsByStudent, Student, Assessment, calculateProgressStatus } from '../lib/mockData';
 import { Calendar, FileText, Plus, Eye, Edit } from 'lucide-react';
 import StudentModal from '../components/students/StudentModal';
 
@@ -22,8 +22,8 @@ function StudentDetail() {
     if (!id) return;
 
     try {
-      const studentData = await mockApi.getStudent(id);
-      const assessmentsData = await mockApi.getAssessmentsByStudent(id);
+  const studentData = await getStudent(id);
+  const assessmentsData = await getAssessmentsByStudent(id);
       
       setStudent(studentData);
       setAssessments(assessmentsData);

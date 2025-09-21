@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { mockApi, Student, Assessment, calculateProgressStatus } from '../lib/supabase';
+import { getStudents, getAssessments, Student, Assessment, calculateProgressStatus } from '../lib/mockData';
 import { Users, ClipboardList, BarChart3, TrendingUp, Plus } from 'lucide-react';
 
 interface DashboardStats {
@@ -29,8 +29,8 @@ function Dashboard() {
 
   const fetchDashboardData = async () => {
     try {
-      const students = await mockApi.getStudents();
-      const assessments = await mockApi.getAssessments();
+  const students = await getStudents();
+  const assessments = await getAssessments();
 
       // Calculate stats
       const totalStudents = students.length;

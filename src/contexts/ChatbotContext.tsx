@@ -30,7 +30,7 @@ export function ChatbotProvider({ children }: { children: React.ReactNode }) {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
-      text: '¡Hola profesor! Soy el asistente de evaluaciones. Puedes preguntarme sobre procedimientos, indicadores, progreso de estudiantes o subir un PDF para analizarlo. Todas mis respuestas serán en español.',
+      text: '¡Hola profesor! Soy el asistente de evaluaciones. Puedes preguntarme sobre procedimientos, indicadores, progreso de estudiantes o subir un PDF para analizarlo.',
       sender: 'bot',
       timestamp: new Date()
     }

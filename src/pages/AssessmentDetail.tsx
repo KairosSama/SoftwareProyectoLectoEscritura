@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { mockApi, Assessment, Student } from '../lib/supabase';
+import { getAssessmentById, getStudent, Assessment, Student } from '../lib/mockData';
 import { ArrowLeft } from 'lucide-react';
 
 function AssessmentDetail() {
@@ -17,10 +17,10 @@ function AssessmentDetail() {
 
   const fetchAssessment = async () => {
     try {
-      const a = await mockApi.getAssessmentById(assessmentId!);
+  const a = await getAssessmentById(assessmentId!);
       setAssessment(a);
       if (a) {
-        const s = await mockApi.getStudent(a.student_id);
+  const s = await getStudent(a.student_id);
         setStudent(s);
       }
     } catch (error) {

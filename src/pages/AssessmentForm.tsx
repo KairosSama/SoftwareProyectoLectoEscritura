@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { mockApi, Student } from '../lib/supabase';
+import { getStudent, createAssessment, Student } from '../lib/mockData';
 import { useAuth } from '../contexts/AuthContext';
 import { getStageBlocks } from '../lib/assessmentData';
 import { Save, ArrowLeft } from 'lucide-react';
@@ -35,7 +35,7 @@ function AssessmentForm() {
     if (!studentId) return;
 
     try {
-      const data = await mockApi.getStudent(studentId);
+  const data = await getStudent(studentId);
       setStudent(data);
     } catch (error) {
       console.error('Error fetching student:', error);
@@ -70,7 +70,7 @@ function AssessmentForm() {
         evaluator_id: user.id
       };
 
-      await mockApi.createAssessment(assessmentData);
+  await createAssessment(assessmentData);
 
       navigate(`/students/${studentId}`);
     } catch (error) {
