@@ -1,3 +1,13 @@
+// Función para crear usuario con UUID
+export const createUser = async (userData: Omit<User, 'id'>): Promise<User> => {
+  const { data, error } = await supabase
+    .from('users')
+    .insert([{ ...userData }])
+    .select('*')
+    .single();
+  if (error) throw error;
+  return data;
+};
 // Funciones Supabase para evaluaciones
 export const getAssessments = async (): Promise<Assessment[]> => {
   const { data, error } = await supabase.from('assessments').select('*');
@@ -91,19 +101,19 @@ export interface ProgressStatus {
 // Mock data
 export const mockUsers: User[] = [
   {
-    id: '1',
+    id: 'a1b2c3d4-e5f6-7890-abcd-1234567890ab',
     email: 'admin@eduassess.com',
     role: 'administrator',
     fullName: 'Admin User'
   },
   {
-    id: '2',
+    id: 'b2c3d4e5-f6a1-8907-bcda-234567890abc',
     email: 'teacher@eduassess.com',
     role: 'teacher',
     fullName: 'Sarah Johnson'
   },
   {
-    id: '3',
+    id: 'c3d4e5f6-a1b2-9078-cdab-34567890abcd',
     email: 'evaluator@eduassess.com',
     role: 'evaluator',
     fullName: 'Dr. Michael Chen'
@@ -112,7 +122,7 @@ export const mockUsers: User[] = [
 
 export const mockStudents: Student[] = [
   {
-    id: '1',
+    id: 'd4e5f6a1-b2c3-7890-abcd-4567890abcde',
     full_name: 'Emma Rodriguez',
     diagnosis: 'Autism Spectrum Disorder',
     birth_date: '2015-03-15',
@@ -121,7 +131,7 @@ export const mockStudents: Student[] = [
     updated_at: '2023-09-01T10:00:00Z'
   },
   {
-    id: '2',
+    id: 'e5f6a1b2-c3d4-8907-bcda-567890abcdef',
     full_name: 'Lucas Thompson',
     diagnosis: 'ADHD',
     birth_date: '2014-07-22',
@@ -130,7 +140,7 @@ export const mockStudents: Student[] = [
     updated_at: '2023-08-15T10:00:00Z'
   },
   {
-    id: '3',
+    id: 'f6a1b2c3-d4e5-9078-cdab-67890abcdef0',
     full_name: 'Sophia Kim',
     diagnosis: 'Learning Disability',
     birth_date: '2016-01-10',
@@ -142,8 +152,8 @@ export const mockStudents: Student[] = [
 
 export const mockAssessments: Assessment[] = [
   {
-    id: '1',
-    student_id: '1',
+    id: 'a7b8c9d0-e1f2-3456-abcd-7890abcdef12',
+    student_id: 'd4e5f6a1-b2c3-7890-abcd-4567890abcde',
     module_id: 'lectoescritura',
     stage: 1,
     indicators: {
@@ -156,12 +166,12 @@ export const mockAssessments: Assessment[] = [
       'emparejamiento_identicas_1': 'SA'
     },
     notes: 'Emma muestra buen progreso en reconocimiento de fotos. Necesita más apoyo con tareas de selección.',
-    evaluator_id: '2',
+    evaluator_id: 'b2c3d4e5-f6a1-8907-bcda-234567890abc',
     created_at: '2023-11-15T14:30:00Z'
   },
   {
-    id: '2',
-    student_id: '2',
+    id: 'b8c9d0e1-f2a7-4563-bcda-890abcdef123',
+    student_id: 'e5f6a1b2-c3d4-8907-bcda-567890abcdef',
     module_id: 'matematica',
     stage: 1,
     indicators: {
@@ -172,7 +182,7 @@ export const mockAssessments: Assessment[] = [
       'patrones_continuacion_0': 'SA'
     },
     notes: 'Lucas demuestra habilidades sólidas de clasificación pero requiere apoyo para correspondencia.',
-    evaluator_id: '3',
+    evaluator_id: 'c3d4e5f6-a1b2-9078-cdab-34567890abcd',
     created_at: '2023-11-10T09:15:00Z'
   }
 ];

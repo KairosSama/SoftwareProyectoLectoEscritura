@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useChatbot } from '../../contexts/ChatbotContext';
+import { useLocation } from 'react-router-dom';
 import { MessageCircle, X, Send, Upload, FileText } from 'lucide-react';
 
 function ChatbotWidget() {
@@ -8,6 +9,10 @@ function ChatbotWidget() {
   const [isDragging, setIsDragging] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const location = useLocation();
+  // Detectar studentId desde la URL
+  const match = location.pathname.match(/students\/(\w{8}-\w{4}-\w{4}-\w{4}-\w{12})/);
+  const studentId = match ? match[1] : null;
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -15,6 +20,7 @@ function ChatbotWidget() {
 
   const handleSend = () => {
     if (inputText.trim()) {
+      // Enviar pregunta y contexto del estudiante
       sendMessage(inputText);
       setInputText('');
     }
@@ -68,6 +74,9 @@ function ChatbotWidget() {
           <div className="bg-blue-600 text-white p-4 rounded-t-lg">
             <h3 className="font-semibold">Assessment Assistant</h3>
             <p className="text-sm opacity-90">Ask questions about evaluations</p>
+            {studentId && (
+              <span className="text-xs mt-1 block opacity-80">Estudiante activo: <b>{studentId}</b></span>
+            )}
           </div>
 
           {/* Messages */}
