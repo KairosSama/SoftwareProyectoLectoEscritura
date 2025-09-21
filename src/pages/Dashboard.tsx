@@ -167,7 +167,7 @@ function Dashboard() {
           </Link>
           
           <Link
-            to="/assessments"
+            to="/students"
             className="flex items-center space-x-3 p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-green-400 hover:bg-green-50 transition-colors duration-200"
           >
             <ClipboardList className="h-5 w-5 text-gray-400" />
