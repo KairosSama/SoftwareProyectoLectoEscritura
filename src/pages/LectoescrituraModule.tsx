@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { BookOpen, Plus, Search, Eye } from 'lucide-react';
 import { getAssessments, getStudents, calculateProgressStatus, Assessment, Student } from '../lib/mockData';
@@ -30,6 +30,8 @@ function LectoescrituraModule() {
     })
     .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
     .slice(0, 5); // solo las 5 más recientes
+
+  return (
     <div className="max-w-7xl mx-auto px-4 py-8 space-y-8">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
