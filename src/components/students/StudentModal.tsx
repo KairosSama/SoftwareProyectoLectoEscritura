@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { mockApi } from '../../lib/supabase';
+import { createStudent, updateStudent } from '../../lib/mockData';
 import { X } from 'lucide-react';
 
 interface StudentModalProps {
@@ -33,9 +33,9 @@ function StudentModal({ isOpen, onClose, onSuccess, student }: StudentModalProps
       };
 
       if (student) {
-        await mockApi.updateStudent(student.id, studentData);
+        await updateStudent(student.id, studentData);
       } else {
-        await mockApi.createStudent(studentData);
+        await createStudent(studentData);
       }
 
       onSuccess();
