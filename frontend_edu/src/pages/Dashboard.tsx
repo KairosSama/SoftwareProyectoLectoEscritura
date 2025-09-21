@@ -1,7 +1,12 @@
+// Mapeo de nombres de materias
+const MODULE_NAMES: Record<string, string> = {
+  lectoescritura: 'Lectoescritura',
+  matematica: 'Matemática',
+};
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { mockApi, Student, Assessment, calculateProgressStatus } from '../lib/supabase';
+import { getStudents, getAssessments, Student, Assessment, calculateProgressStatus } from '../lib/mockData';
 import { Users, ClipboardList, BarChart3, TrendingUp, Plus } from 'lucide-react';
 
 interface DashboardStats {
@@ -29,8 +34,12 @@ function Dashboard() {
 
   const fetchDashboardData = async () => {
     try {
-      const students = await mockApi.getStudents();
-      const assessments = await mockApi.getAssessments();
+  const students = await getStudents();
+  const assessments = await getAssessments();
+      // Aseguramos orden: más recientes primero
+      const assessmentsSorted = assessments
+        .slice()
+        .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
       // Calculate stats
       const totalStudents = students.length;
@@ -61,7 +70,7 @@ function Dashboard() {
       setRecentStudents(students.slice(0, 5));
       
       // Get student names for assessments
-      const assessmentsWithNames = assessments.slice(0, 5).map(assessment => {
+      const assessmentsWithNames = assessmentsSorted.slice(0, 5).map(assessment => {
         const student = students.find(s => s.id === assessment.student_id);
         return {
           ...assessment,
@@ -96,7 +105,7 @@ function Dashboard() {
       {/* Welcome Header */}
       <div>
         <h1 className="text-3xl font-bold text-gray-900">
-          ¡Bienvenido de nuevo, {user?.fullName}!
+          ¡Bienvenido de nuevo, {user?.user_metadata?.fullName || user?.email}!
         </h1>
         <p className="text-gray-600 mt-2">
           Aquí tienes un resumen de tu plataforma de evaluación
@@ -167,7 +176,7 @@ function Dashboard() {
           </Link>
           
           <Link
-            to="/assessments"
+            to="/students"
             className="flex items-center space-x-3 p-4 border-2 border-dashed border-gray-300 rounded-lg hover:border-green-400 hover:bg-green-50 transition-colors duration-200"
           >
             <ClipboardList className="h-5 w-5 text-gray-400" />
@@ -220,7 +229,7 @@ function Dashboard() {
         <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-xl font-semibold text-gray-900">Evaluaciones Recientes</h2>
-            <Link to="/assessments" className="text-blue-600 hover:text-blue-700 text-sm font-medium">
+            <Link to="/all-assessments" className="text-blue-600 hover:text-blue-700 text-sm font-medium">
               Ver todas
             </Link>
           </div>
@@ -232,7 +241,9 @@ function Dashboard() {
                   <div key={assessment.id} className="flex items-center justify-between p-3 hover:bg-gray-50 rounded-lg transition-colors duration-200">
                     <div>
                       <p className="font-medium text-gray-900">{assessment.student_name}</p>
-                      <p className="text-sm text-gray-600">Etapa {assessment.stage} Evaluación</p>
+                      <p className="text-sm text-gray-600">
+                        {MODULE_NAMES[assessment.module_id] || assessment.module_id} • Etapa {assessment.stage} Evaluación
+                      </p>
                     </div>
                     <div className="flex items-center space-x-2">
                       <div className={`w-3 h-3 rounded-full ${

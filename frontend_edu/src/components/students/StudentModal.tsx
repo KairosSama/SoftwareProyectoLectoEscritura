@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { mockApi } from '../../lib/supabase';
+import { createStudent, updateStudent } from '../../lib/mockData';
 import { X } from 'lucide-react';
 
 interface StudentModalProps {
@@ -33,9 +33,9 @@ function StudentModal({ isOpen, onClose, onSuccess, student }: StudentModalProps
       };
 
       if (student) {
-        await mockApi.updateStudent(student.id, studentData);
+        await updateStudent(student.id, studentData);
       } else {
-        await mockApi.createStudent(studentData);
+        await createStudent(studentData);
       }
 
       onSuccess();
@@ -53,7 +53,7 @@ function StudentModal({ isOpen, onClose, onSuccess, student }: StudentModalProps
       <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
           <h2 className="text-xl font-semibold text-gray-900">
-            {student ? 'Edit Student' : 'Add New Student'}
+            {student ? 'Editar Estudiante' : 'Añadir Estudiante'}
           </h2>
           <button
             onClick={onClose}
@@ -72,7 +72,7 @@ function StudentModal({ isOpen, onClose, onSuccess, student }: StudentModalProps
 
           <div>
             <label htmlFor="fullName" className="block text-sm font-medium text-gray-700 mb-1">
-              Full Name *
+              Nombre Completo *
             </label>
             <input
               type="text"
@@ -86,7 +86,7 @@ function StudentModal({ isOpen, onClose, onSuccess, student }: StudentModalProps
 
           <div>
             <label htmlFor="diagnosis" className="block text-sm font-medium text-gray-700 mb-1">
-              Diagnosis *
+              Diagnóstico *
             </label>
             <input
               type="text"
@@ -94,14 +94,14 @@ function StudentModal({ isOpen, onClose, onSuccess, student }: StudentModalProps
               required
               value={formData.diagnosis}
               onChange={(e) => setFormData({ ...formData, diagnosis: e.target.value })}
-              placeholder="e.g., Autism Spectrum Disorder, ADHD, Learning Disability"
+              placeholder="Ej: Trastorno del Espectro Autista, TDAH, Dificultad de Aprendizaje"
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
           </div>
 
           <div>
             <label htmlFor="birthDate" className="block text-sm font-medium text-gray-700 mb-1">
-              Birth Date *
+              Fecha de Nacimiento *
             </label>
             <input
               type="date"
@@ -115,7 +115,7 @@ function StudentModal({ isOpen, onClose, onSuccess, student }: StudentModalProps
 
           <div>
             <label htmlFor="programStartDate" className="block text-sm font-medium text-gray-700 mb-1">
-              Program Start Date *
+              Fecha de Inicio del Programa *
             </label>
             <input
               type="date"
@@ -133,14 +133,14 @@ function StudentModal({ isOpen, onClose, onSuccess, student }: StudentModalProps
               onClick={onClose}
               className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 transition-colors duration-200"
             >
-              Cancel
+              Cancelar
             </button>
             <button
               type="submit"
               disabled={loading}
               className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
             >
-              {loading ? 'Saving...' : student ? 'Update' : 'Add Student'}
+              {loading ? 'Guardando...' : student ? 'Actualizar' : 'Añadir Estudiante'}
             </button>
           </div>
         </form>

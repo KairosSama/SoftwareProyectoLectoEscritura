@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { mockApi, Student } from '../lib/supabase';
+import { getStudents, Student } from '../lib/mockData';
 import { Plus, Search, Calendar, FileText, Eye } from 'lucide-react';
 import StudentModal from '../components/students/StudentModal';
 
@@ -16,7 +16,7 @@ function Students() {
 
   const fetchStudents = async () => {
     try {
-      const data = await mockApi.getStudents();
+  const data = await getStudents();
       setStudents(data);
     } catch (error) {
       console.error('Error fetching students:', error);

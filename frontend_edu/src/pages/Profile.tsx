@@ -85,7 +85,7 @@ function Profile() {
               )}
               <div className="flex items-center space-x-2 mt-2">
                 <Shield className="h-4 w-4 text-gray-400" />
-                <span className="text-sm text-gray-600 capitalize">{user?.role}</span>
+                <span className="text-sm text-gray-600 capitalize">{user?.role === 'teacher' ? 'Profesor' : user?.role === 'authenticated' ? 'Profesor' : user?.role}</span>
               </div>
             </div>
           </div>
@@ -113,7 +113,7 @@ function Profile() {
                 <User className="h-4 w-4 inline mr-2" />
                 Rol
               </label>
-              <p className="text-gray-900 capitalize">{user?.role}</p>
+              <p className="text-gray-900 capitalize">{user?.role === 'teacher' ? 'Profesor' : user?.role === 'authenticated' ? 'Profesor' : user?.role}</p>
               <p className="text-sm text-gray-500 mt-1">
                 Contacta al administrador para cambiar tu rol
               </p>

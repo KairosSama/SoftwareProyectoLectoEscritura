@@ -30,7 +30,7 @@ export function ChatbotProvider({ children }: { children: React.ReactNode }) {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
-      text: 'Hello! I\'m here to help you with assessment questions and documentation. You can upload PDF documents for me to analyze.',
+      text: '¡Hola profesor! Soy el asistente de evaluaciones. Puedes preguntarme sobre procedimientos, indicadores, progreso de estudiantes o subir un PDF para analizarlo.',
       sender: 'bot',
       timestamp: new Date()
     }
@@ -65,7 +65,7 @@ export function ChatbotProvider({ children }: { children: React.ReactNode }) {
   const uploadDocument = async (file: File) => {
     const uploadMessage: Message = {
       id: Date.now().toString(),
-      text: `Document "${file.name}" uploaded successfully. I can now answer questions about its content.`,
+      text: `Documento "${file.name}" subido correctamente. Ahora puedes hacerme preguntas sobre su contenido y te responderé en español.`,
       sender: 'bot',
       timestamp: new Date()
     };
@@ -73,21 +73,20 @@ export function ChatbotProvider({ children }: { children: React.ReactNode }) {
   };
 
   const generateBotResponse = (userMessage: string): string => {
-    const lowercaseMessage = userMessage.toLowerCase();
-    
-    if (lowercaseMessage.includes('assessment') || lowercaseMessage.includes('evaluate')) {
-      return 'For assessments, remember that each indicator can be marked as "AP" (With Support), "SA" (Without Support), or "NP" (Not Achieved). Focus on observing the student\'s natural responses first.';
+    const msg = userMessage.toLowerCase();
+    if (msg.includes('evaluación') || msg.includes('evaluar')) {
+      return 'En las evaluaciones, cada indicador puede marcarse como "AP" (Con Apoyo), "SA" (Sin Apoyo) o "NP" (No logrado). Observa primero la respuesta natural del estudiante.';
     }
-    
-    if (lowercaseMessage.includes('stage 1') || lowercaseMessage.includes('photo')) {
-      return 'Stage 1 focuses on photo recognition and basic categorization. Start with familiar items like family photos and personal objects before moving to more abstract categories.';
+    if (msg.includes('etapa 1') || msg.includes('foto')) {
+      return 'La etapa 1 se centra en el reconocimiento de fotos y la categorización básica. Comienza con objetos y personas familiares antes de avanzar a categorías más abstractas.';
     }
-    
-    if (lowercaseMessage.includes('progress') || lowercaseMessage.includes('color')) {
-      return 'The progress matrix uses: Green for autonomous mastery (>60% SA + >80% completion), Red for significant support needed (>50% AP + <40% SA), and White for not yet passed (<50% completion).';
+    if (msg.includes('progreso') || msg.includes('color')) {
+      return 'La matriz de progreso usa: Verde para autonomía (>60% SA y >80% completado), Rojo para apoyo significativo (>50% AP y <40% SA), y Blanco para no logrado (<50% completado).';
     }
-    
-    return 'I understand you\'re asking about special education assessment. Could you be more specific about what aspect you\'d like help with? I can assist with assessment procedures, progress tracking, or documentation.';
+    if (msg.includes('pdf') || msg.includes('documento')) {
+      return 'He recibido tu PDF. Puedes preguntarme sobre su contenido y te responderé en español.';
+    }
+    return 'Entiendo que tienes dudas sobre evaluación en educación especial. ¿Sobre qué aspecto necesitas ayuda? Puedo orientarte en procedimientos, indicadores, progreso o documentación. Todas mis respuestas serán en español.';
   };
 
   const value = {

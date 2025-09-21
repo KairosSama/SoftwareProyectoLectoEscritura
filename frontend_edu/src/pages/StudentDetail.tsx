@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { mockApi, Student, Assessment, calculateProgressStatus } from '../lib/supabase';
+import { useNavigate } from 'react-router-dom';
+import { getStudent, getAssessmentsByStudent, Student, Assessment, calculateProgressStatus } from '../lib/mockData';
 import { Calendar, FileText, Plus, Eye, Edit } from 'lucide-react';
 import StudentModal from '../components/students/StudentModal';
 
 function StudentDetail() {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const [student, setStudent] = useState<Student | null>(null);
   const [assessments, setAssessments] = useState<Assessment[]>([]);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -22,8 +24,8 @@ function StudentDetail() {
     if (!id) return;
 
     try {
-      const studentData = await mockApi.getStudent(id);
-      const assessmentsData = await mockApi.getAssessmentsByStudent(id);
+  const studentData = await getStudent(id);
+  const assessmentsData = await getAssessmentsByStudent(id);
       
       setStudent(studentData);
       setAssessments(assessmentsData);
@@ -55,7 +57,9 @@ function StudentDetail() {
 
   // Agrupar evaluaciones por módulo
   const getModuleAssessments = (moduleId: string, stage: number) => {
-    return assessments.filter(a => a.module_id === moduleId && a.stage === stage);
+    return assessments
+      .filter(a => a.module_id === moduleId && a.stage === stage)
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()); // más reciente primero
   };
 
   const renderProgressMatrix = () => {
@@ -72,6 +76,7 @@ function StudentDetail() {
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               {stages.map(stage => {
                 const stageAssessments = getModuleAssessments(module.id, stage);
+                // Ahora stageAssessments está ordenado desc, el índice 0 es la evaluación más reciente
                 const latestAssessment = stageAssessments[0];
                 let status: { color: 'white' | 'green' | 'red'; completionRate: number } = { color: 'white', completionRate: 0 };
                 if (latestAssessment) {
@@ -170,7 +175,7 @@ function StudentDetail() {
                 className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors duration-200"
                 onClick={() => {
                   setShowAssessmentTypeModal(false);
-                  window.location.href = `/assessment/lectoescritura/${student?.id}`;
+                  navigate(`/assessment/lectoescritura/${student?.id}`);
                 }}
               >
                 Lectoescritura
@@ -179,7 +184,7 @@ function StudentDetail() {
                 className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors duration-200"
                 onClick={() => {
                   setShowAssessmentTypeModal(false);
-                  window.location.href = `/assessment/matematica/${student?.id}`;
+                  navigate(`/assessment/matematica/${student?.id}`);
                 }}
               >
                 Matemática
@@ -249,7 +254,10 @@ function StudentDetail() {
         
         {assessments.length > 0 ? (
           <div className="space-y-4">
-            {assessments.map((assessment) => {
+            {assessments
+              .slice()
+              .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+              .map((assessment) => {
               const status = calculateProgressStatus(assessment);
               return (
                 <div

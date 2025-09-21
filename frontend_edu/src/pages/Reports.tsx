@@ -2,7 +2,7 @@ import React from 'react';
 import { useEffect, useState } from 'react';
 import { BarChart3, Calendar } from 'lucide-react';
 import BarChart from '../components/BarChart';
-import { mockApi, Student, Assessment, calculateProgressStatus } from '../lib/supabase';
+import { getStudents, getAssessments, Student, Assessment, calculateProgressStatus } from '../lib/mockData';
 import jsPDF from 'jspdf';
 
 function Reports() {
@@ -16,8 +16,8 @@ function Reports() {
 
   useEffect(() => {
     async function fetchData() {
-      const s = await mockApi.getStudents();
-      const a = await mockApi.getAssessments();
+  const s = await getStudents();
+  const a = await getAssessments();
       setStudents(s);
       setAssessments(a);
     }
@@ -33,6 +33,8 @@ function Reports() {
       if (endDate) {
         filtered = filtered.filter(a => new Date(a.created_at) <= new Date(endDate));
       }
+      // Ordenar por fecha descendente para mostrar primero la evaluación más reciente
+      filtered = filtered.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
       setIndividualReport(filtered);
     } else {
       setIndividualReport([]);
@@ -57,7 +59,6 @@ function Reports() {
         if (totalIndicators > 0) {
           const saRate = (sa / totalIndicators) * 100;
           const apRate = (ap / totalIndicators) * 100;
-          const npRate = (np / totalIndicators) * 100;
           if (saRate > 60) autonomous++;
           else if (apRate > 50) support++;
           else notAchieved++;

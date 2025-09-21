@@ -70,9 +70,9 @@ function Navbar() {
 
           <div className="flex items-center space-x-4">
             <div className="hidden md:flex items-center space-x-3">
-              <span className="text-sm text-gray-600">Bienvenido, {user?.fullName}</span>
+              <span className="text-sm text-gray-600">Bienvenido, {user?.user_metadata?.fullName || user?.email}</span>
               <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
-                {user?.role}
+                {user?.role === 'teacher' ? 'Profesor' : user?.role === 'authenticated' ? 'Profesor' : user?.role}
               </span>
             </div>
             

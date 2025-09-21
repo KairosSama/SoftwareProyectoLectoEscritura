@@ -1,8 +1,9 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { mockApi, User } from '../lib/supabase';
+import { supabase } from '../lib/supabase';
+// TODO: Migrar funciones de autenticación a Supabase
 
 interface AuthContextType {
-  user: User | null;
+  user: any | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string, fullName: string, role: string) => Promise<void>;
@@ -21,33 +22,48 @@ export function useAuth() {
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Check if user is already logged in
-    const currentUser = mockApi.getCurrentUser();
-    setUser(currentUser);
-    setLoading(false);
+    supabase.auth.getSession().then(({ data }) => {
+      setUser(data?.session?.user || null);
+      setLoading(false);
+    });
+    // Listen for auth changes
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user || null);
+    });
+    return () => {
+      listener?.subscription.unsubscribe();
+    };
   }, []);
 
   const signIn = async (email: string, password: string) => {
-    const user = await mockApi.signIn(email, password);
-    setUser(user);
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+  if (error) throw error;
+  setUser(data.user);
   };
 
   const signUp = async (email: string, password: string, fullName: string, role: string) => {
-    const user = await mockApi.signUp(email, password, fullName, role);
-    setUser(user);
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: { fullName, role }
+      }
+    });
+    if (error) throw error;
+    setUser(data.user);
   };
 
   const signOut = async () => {
-    await mockApi.signOut();
-    setUser(null);
+  await supabase.auth.signOut();
+  setUser(null);
   };
 
   const resetPassword = async (email: string) => {
-    await mockApi.resetPassword(email);
+  await supabase.auth.resetPasswordForEmail(email);
   };
 
   const value = {

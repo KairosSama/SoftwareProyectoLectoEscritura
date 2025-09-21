@@ -1,3 +1,58 @@
+// Funciones Supabase para evaluaciones
+export const getAssessments = async (): Promise<Assessment[]> => {
+  const { data, error } = await supabase.from('assessments').select('*');
+  if (error) throw error;
+  return data || [];
+};
+
+export const getAssessmentById = async (assessmentId: string): Promise<Assessment | null> => {
+  const { data, error } = await supabase.from('assessments').select('*').eq('id', assessmentId).single();
+  if (error) throw error;
+  return data || null;
+};
+
+export const getAssessmentsByStudent = async (studentId: string): Promise<Assessment[]> => {
+  // Traer evaluaciones ordenadas de más reciente a más antigua para facilitar usar la última
+  const { data, error } = await supabase
+    .from('assessments')
+    .select('*')
+    .eq('student_id', studentId)
+    .order('created_at', { ascending: false });
+  if (error) throw error;
+  return data || [];
+};
+
+export const createAssessment = async (assessmentData: Omit<Assessment, 'id' | 'created_at'>): Promise<Assessment> => {
+  const { data, error } = await supabase.from('assessments').insert([assessmentData]).select('*').single();
+  if (error) throw error;
+  return data;
+};
+import { supabase } from './supabase';
+
+// Funciones Supabase para estudiantes
+export const getStudents = async (): Promise<Student[]> => {
+  const { data, error } = await supabase.from('students').select('*');
+  if (error) throw error;
+  return data || [];
+};
+
+export const getStudent = async (id: string): Promise<Student | null> => {
+  const { data, error } = await supabase.from('students').select('*').eq('id', id).single();
+  if (error) throw error;
+  return data || null;
+};
+
+export const createStudent = async (studentData: Omit<Student, 'id' | 'created_at' | 'updated_at'>): Promise<Student> => {
+  const { data, error } = await supabase.from('students').insert([studentData]).select('*').single();
+  if (error) throw error;
+  return data;
+};
+
+export const updateStudent = async (id: string, studentData: Partial<Student>): Promise<Student> => {
+  const { data, error } = await supabase.from('students').update(studentData).eq('id', id).select('*').single();
+  if (error) throw error;
+  return data;
+};
 export interface Student {
   id: string;
   full_name: string;
@@ -130,7 +185,7 @@ export const calculateProgressStatus = (assessment: Assessment): ProgressStatus 
     return { color: 'white', completionRate: 0, autonomousRate: 0, supportRate: 0 };
   }
   
-  const completedCount = indicators.filter(val => val !== '').length;
+  const completedCount = indicators.length; // Todos los indicadores tienen valor 'AP', 'SA' o 'NP'
   const autonomousCount = indicators.filter(val => val === 'SA').length;
   const supportCount = indicators.filter(val => val === 'AP').length;
   
