@@ -96,7 +96,7 @@ function Dashboard() {
       {/* Welcome Header */}
       <div>
         <h1 className="text-3xl font-bold text-gray-900">
-          ¡Bienvenido de nuevo, {user?.fullName}!
+          ¡Bienvenido de nuevo, {user?.user_metadata?.fullName || user?.email}!
         </h1>
         <p className="text-gray-600 mt-2">
           Aquí tienes un resumen de tu plataforma de evaluación
