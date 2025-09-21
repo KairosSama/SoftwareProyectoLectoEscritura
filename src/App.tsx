@@ -20,8 +20,8 @@ import AllAssessments from './pages/AllAssessments';
 function App() {
   return (
     <AuthProvider>
-      <ChatbotProvider>
-        <Router>
+      <Router>
+        <ChatbotProvider>
           <div className="min-h-screen bg-gray-50">
             <Routes>
               <Route path="/login" element={<LoginPage />} />
@@ -128,8 +128,8 @@ function App() {
               />
             </Routes>
           </div>
-        </Router>
-      </ChatbotProvider>
+        </ChatbotProvider>
+      </Router>
     </AuthProvider>
   );
 }
