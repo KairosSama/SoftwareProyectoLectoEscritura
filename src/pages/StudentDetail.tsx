@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { getStudent, getAssessmentsByStudent, Student, Assessment, calculateProgressStatus } from '../lib/mockData';
 import { Calendar, FileText, Plus, Eye, Edit } from 'lucide-react';
 import StudentModal from '../components/students/StudentModal';
 
 function StudentDetail() {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const [student, setStudent] = useState<Student | null>(null);
   const [assessments, setAssessments] = useState<Assessment[]>([]);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -173,7 +175,7 @@ function StudentDetail() {
                 className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors duration-200"
                 onClick={() => {
                   setShowAssessmentTypeModal(false);
-                  window.location.href = `/assessment/lectoescritura/${student?.id}`;
+                  navigate(`/assessment/lectoescritura/${student?.id}`);
                 }}
               >
                 Lectoescritura
@@ -182,7 +184,7 @@ function StudentDetail() {
                 className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors duration-200"
                 onClick={() => {
                   setShowAssessmentTypeModal(false);
-                  window.location.href = `/assessment/matematica/${student?.id}`;
+                  navigate(`/assessment/matematica/${student?.id}`);
                 }}
               >
                 Matemática
