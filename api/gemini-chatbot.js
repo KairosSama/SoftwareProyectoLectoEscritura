@@ -11,37 +11,39 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Missing prompt' });
   }
 
-  const apiKey = process.env.GEMINI_API_KEY;
-  console.log('GEMINI_API_KEY:', apiKey);
-  if (!apiKey) {
-    console.error('API key missing');
-    return res.status(500).json({ error: 'API key missing' });
+
+  const hfToken = process.env.HUGGINGFACE_API_TOKEN;
+  console.log('HUGGINGFACE_API_TOKEN:', hfToken ? 'Present' : 'Missing');
+  if (!hfToken) {
+    console.error('Hugging Face API token missing');
+    return res.status(500).json({ error: 'Hugging Face API token missing' });
   }
 
-  const url = `https://generativelanguage.googleapis.com/v1beta1/models/gemini-pro:generateContent?key=${apiKey}`;
+  // DeepSeek model endpoint (text generation)
+  const url = 'https://api-inference.huggingface.co/models/deepseek-ai/deepseek-llm-7b-base';
 
   try {
     const response = await fetch(url, {
       method: 'POST',
       headers: {
+        'Authorization': `Bearer ${hfToken}`,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }]
+        inputs: prompt,
+        parameters: {
+          max_new_tokens: 256,
+          do_sample: true,
+          temperature: 0.7
+        }
       })
     });
-    const text = await response.text();
-    console.log('Gemini API raw response:', text);
-    let result = {};
-    try {
-      result = JSON.parse(text);
-    } catch (e) {
-      console.error('JSON parse error:', e);
-    }
-    const answer = result.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    const result = await response.json();
+    console.log('DeepSeek API raw response:', result);
+    const answer = Array.isArray(result) && result[0]?.generated_text ? result[0].generated_text : '';
     res.status(200).json({ answer });
   } catch (err) {
-    console.error('Gemini error:', err);
-    res.status(500).json({ error: 'Error al consultar Gemini', details: err.message });
+    console.error('DeepSeek error:', err);
+    res.status(500).json({ error: 'Error al consultar DeepSeek', details: err.message });
   }
 }
