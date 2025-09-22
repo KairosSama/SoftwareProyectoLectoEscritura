@@ -1,11 +1,11 @@
--- Crear la base de datos
-CREATE DATABASE asistente_educativo;
+-- Crear la base de datos (ejecutar solo si no existe)
+-- CREATE DATABASE asistente_educativo;
 
--- Conectarse a la base
-\c asistente_educativo;
+-- Conectarse a la base de datos
+-- \c asistente_educativo;
 
 -- Tabla de usuarios
-CREATE TABLE usuarios (
+CREATE TABLE IF NOT EXISTS usuarios (
     id SERIAL PRIMARY KEY,
     nombre VARCHAR(100) NOT NULL,
     email VARCHAR(100) UNIQUE NOT NULL,
@@ -15,7 +15,7 @@ CREATE TABLE usuarios (
 );
 
 -- Tabla de formularios
-CREATE TABLE formularios (
+CREATE TABLE IF NOT EXISTS formularios (
     id SERIAL PRIMARY KEY,
     usuario_id INT NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
     nombre_completo VARCHAR(150) NOT NULL,
@@ -27,7 +27,7 @@ CREATE TABLE formularios (
 );
 
 -- Tabla de encuestas (20 preguntas)
-CREATE TABLE encuestas (
+CREATE TABLE IF NOT EXISTS encuestas (
     id SERIAL PRIMARY KEY,
     usuario_id INT NOT NULL REFERENCES usuarios(id) ON DELETE CASCADE,
     completada BOOLEAN DEFAULT false,
@@ -39,7 +39,7 @@ CREATE TABLE encuestas (
 );
 
 -- Tabla de conocimiento del chatbot
-CREATE TABLE conocimiento_chatbot (
+CREATE TABLE IF NOT EXISTS conocimiento_chatbot (
     id SERIAL PRIMARY KEY,
     pregunta VARCHAR(255) NOT NULL,
     respuesta TEXT NOT NULL,
@@ -48,17 +48,27 @@ CREATE TABLE conocimiento_chatbot (
 );
 
 -- Tabla de documentos PDF cargados
-CREATE TABLE chatbot_docs (
+CREATE TABLE IF NOT EXISTS chatbot_docs (
     id SERIAL PRIMARY KEY,
     filename VARCHAR(255) NOT NULL,
     uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Tabla de logs del chatbot
-CREATE TABLE chatbot_logs (
+CREATE TABLE IF NOT EXISTS chatbot_logs (
     id SERIAL PRIMARY KEY,
     usuario_id INT REFERENCES usuarios(id) ON DELETE SET NULL,
     pregunta TEXT,
     respuesta TEXT,
     fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- NUEVA: Tabla de perfiles de alumnos
+CREATE TABLE IF NOT EXISTS perfiles_alumnos (
+    id SERIAL PRIMARY KEY,
+    usuario_id INT REFERENCES usuarios(id) ON DELETE CASCADE,
+    curso_actual VARCHAR(50),
+    promedio NUMERIC(5,2),
+    aprobado BOOLEAN,
+    fecha_registro TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );

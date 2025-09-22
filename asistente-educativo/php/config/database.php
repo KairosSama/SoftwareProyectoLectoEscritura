@@ -1,25 +1,22 @@
 <?php
 class Database {
     private $host = "localhost";
-    private $port = 5433;
-    private $db_name = "tu_base_de_datos";
-    private $username = "tu_usuario";
-    private $password = "tu_contraseña";
+    private $port = "5433";
+    private $db_name = "asistente_educativo";
+    private $username = "postgres";
+    private $password = "admin";
     public $conn;
 
     public function getConnection() {
         $this->conn = null;
         try {
-            $this->conn = new PDO(
-                "pgsql:host={$this->host};port={$this->port};dbname={$this->db_name}",
-                $this->username,
-                $this->password
-            );
+            $dsn = "pgsql:host={$this->host};port={$this->port};dbname={$this->db_name}";
+            $this->conn = new PDO($dsn, $this->username, $this->password);
             $this->conn->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-        } catch(PDOException $exception) {
+        } catch (PDOException $exception) {
             echo "Error de conexión: " . $exception->getMessage();
+            exit;
         }
         return $this->conn;
     }
 }
-?>
