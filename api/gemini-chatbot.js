@@ -39,11 +39,11 @@ export default async function handler(req, res) {
       })
     });
     const result = await response.json();
-    console.log('DeepSeek API raw response:', result);
+    console.log('Mistral API raw response:', result);
     const answer = Array.isArray(result) && result[0]?.generated_text ? result[0].generated_text : '';
     res.status(200).json({ answer });
   } catch (err) {
-    console.error('DeepSeek error:', err);
-    res.status(500).json({ error: 'Error al consultar DeepSeek', details: err.message });
+    console.error('Mistral error:', err);
+    res.status(500).json({ error: 'Error al consultar Mistral', details: err.message });
   }
 }
