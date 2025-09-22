@@ -19,8 +19,8 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: 'Hugging Face API token missing' });
   }
 
-  // Mistral-7B-Instruct model endpoint (chat)
-  const url = 'https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.2';
+  // Gemma-7B-IT model endpoint (chat)
+  const url = 'https://api-inference.huggingface.co/models/google/gemma-7b-it';
 
   try {
     const response = await fetch(url, {
