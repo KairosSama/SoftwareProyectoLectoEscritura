@@ -30,8 +30,14 @@ export default async function handler(req, res) {
         contents: [{ parts: [{ text: prompt }] }]
       })
     });
-    const result = await response.json();
-    console.log('Gemini API response:', result);
+    const text = await response.text();
+    console.log('Gemini API raw response:', text);
+    let result = {};
+    try {
+      result = JSON.parse(text);
+    } catch (e) {
+      console.error('JSON parse error:', e);
+    }
     const answer = result.candidates?.[0]?.content?.parts?.[0]?.text || '';
     res.status(200).json({ answer });
   } catch (err) {
