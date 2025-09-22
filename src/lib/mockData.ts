@@ -52,10 +52,23 @@ export const getStudent = async (id: string): Promise<Student | null> => {
   return data || null;
 };
 
-export const createStudent = async (studentData: Omit<Student, 'id' | 'created_at' | 'updated_at'>): Promise<Student> => {
-  const { data, error } = await supabase.from('students').insert([studentData]).select('*').single();
+export const createStudent = async (
+  studentData: Omit<Student, 'id' | 'created_at' | 'updated_at' | 'created_by'>
+): Promise<Student> => {
+  // Obtener usuario autenticado
+  const { data: userData, error: userErr } = await supabase.auth.getUser();
+  if (userErr) throw userErr;
+  const uid = userData?.user?.id;
+  if (!uid) throw new Error('Usuario no autenticado');
+
+  const payload = { ...studentData, created_by: uid } as any;
+  const { data, error } = await supabase
+    .from('students')
+    .insert([payload])
+    .select('*')
+    .single();
   if (error) throw error;
-  return data;
+  return data as Student;
 };
 
 export const updateStudent = async (id: string, studentData: Partial<Student>): Promise<Student> => {
@@ -71,6 +84,7 @@ export interface Student {
   program_start_date: string;
   created_at: string;
   updated_at: string;
+  created_by: string; // nuevo campo para RLS
 }
 
 export interface Assessment {
@@ -128,7 +142,8 @@ export const mockStudents: Student[] = [
     birth_date: '2015-03-15',
     program_start_date: '2023-09-01',
     created_at: '2023-09-01T10:00:00Z',
-    updated_at: '2023-09-01T10:00:00Z'
+    updated_at: '2023-09-01T10:00:00Z',
+    created_by: 'a1b2c3d4-e5f6-7890-abcd-1234567890ab'
   },
   {
     id: 'e5f6a1b2-c3d4-8907-bcda-567890abcdef',
@@ -137,7 +152,8 @@ export const mockStudents: Student[] = [
     birth_date: '2014-07-22',
     program_start_date: '2023-08-15',
     created_at: '2023-08-15T10:00:00Z',
-    updated_at: '2023-08-15T10:00:00Z'
+    updated_at: '2023-08-15T10:00:00Z',
+    created_by: 'b2c3d4e5-f6a1-8907-bcda-234567890abc'
   },
   {
     id: 'f6a1b2c3-d4e5-9078-cdab-67890abcdef0',
@@ -146,7 +162,8 @@ export const mockStudents: Student[] = [
     birth_date: '2016-01-10',
     program_start_date: '2023-10-01',
     created_at: '2023-10-01T10:00:00Z',
-    updated_at: '2023-10-01T10:00:00Z'
+    updated_at: '2023-10-01T10:00:00Z',
+    created_by: 'c3d4e5f6-a1b2-9078-cdab-34567890abcd'
   }
 ];
 
