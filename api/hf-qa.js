@@ -5,6 +5,10 @@
 const MODEL_URL = 'https://api-inference.huggingface.co/models/deepset/xlm-roberta-base-squad2';
 const DEFAULT_MAX_CHARS = 1500; // max chars per chunk (approx to keep request small)
 const MIN_SCORE_THRESHOLD = 0.2; // below this, we treat as "no answer"
+const MAX_PARAGRAPH_FALLBACK = 2; // number of paragraphs to return in lexical fallback
+
+// Minimal Spanish stopwords (extend as needed)
+const STOPWORDS = new Set(['el','la','los','las','de','del','un','una','y','o','u','que','en','para','por','con','al','lo','se','su','sus','a','sobre','más','como','qué','cuál','cuáles','donde','dónde','cuando','cuándo','fundamentos','teóricos']);
 
 function chunkText(text, maxChars = DEFAULT_MAX_CHARS) {
   if (!text) return [];
@@ -32,6 +36,47 @@ function chunkText(text, maxChars = DEFAULT_MAX_CHARS) {
   }
   if (current) chunks.push(current);
   return chunks;
+}
+
+function normalize(str) {
+  return str
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[^a-z0-9ñáéíóúü\s]/gi, ' ') // keep letters, numbers, spaces
+    .replace(/\s+/g, ' ') // collapse
+    .trim();
+}
+
+function extractKeywords(question) {
+  const tokens = normalize(question).split(' ').filter(t => t && !STOPWORDS.has(t));
+  // deduplicate
+  return [...new Set(tokens)].slice(0, 12); // cap to avoid over highlighting
+}
+
+function lexicalFallback(question, pdfText) {
+  if (!pdfText) return null;
+  const keywords = extractKeywords(question);
+  if (keywords.length === 0) return null;
+  const paragraphs = pdfText.split(/\n{2,}|\r\n{2,}/).map(p => p.trim()).filter(Boolean);
+  let scored = paragraphs.map((p, idx) => {
+    const normP = normalize(p);
+    let hits = 0;
+    for (const kw of keywords) {
+      if (normP.includes(kw)) hits++;
+    }
+    return { paragraph: p, hits, idx };
+  }).filter(r => r.hits > 0);
+  if (scored.length === 0) return null;
+  scored.sort((a,b) => b.hits - a.hits || a.idx - b.idx);
+  const top = scored.slice(0, MAX_PARAGRAPH_FALLBACK).map(r => r.paragraph);
+
+  // Highlight keywords (simple, case-insensitive)
+  const regex = new RegExp(`(${keywords.map(k => k.replace(/[-/\\^$*+?.()|[\]{}]/g,'\\$&')).join('|')})`, 'gi');
+  const highlighted = top.map(p => p.replace(regex, '**$1**'));
+  return {
+    answer: highlighted.join('\n\n'),
+    keywords
+  };
 }
 
 async function queryHuggingFace(apiKey, question, context) {
@@ -116,9 +161,19 @@ export default async function handler(req, res) {
   }
 
   if (!best.answer || best.score < MIN_SCORE_THRESHOLD) {
+    const fallback = lexicalFallback(question, pdfText);
+    if (fallback) {
+      return res.status(200).json({
+        answer: `No se encontró una respuesta exacta, pero aquí tienes fragmento(s) relacionado(s):\n\n${fallback.answer}`,
+        score: best.score || 0,
+        fallback: true,
+        keywords: fallback.keywords
+      });
+    }
     return res.status(200).json({
       answer: 'No encontré una respuesta clara en los documentos para esa pregunta. Intenta reformularla o proporciona más contexto.',
-      score: best.score || 0
+      score: best.score || 0,
+      fallback: false
     });
   }
 
