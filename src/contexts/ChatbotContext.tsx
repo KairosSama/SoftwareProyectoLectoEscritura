@@ -78,28 +78,35 @@ export function ChatbotProvider({ children }: { children: React.ReactNode }) {
       }
     }
 
-    // Construir prompt
-    const prompt = `Datos del estudiante:\n${studentData}\n\nPDFs:\n${pdfText}\n\nPregunta del profesor: ${text}`;
-
-    // Llamar al endpoint backend OpenAI
+    // Preparar datos para endpoint QA
     let botText = 'No se pudo obtener respuesta.';
+    let score: number | undefined = undefined;
     try {
-      const response = await fetch('/api/gemini-chatbot', {
+      const response = await fetch('/api/hf-qa', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ prompt })
+        body: JSON.stringify({
+          question: text,
+          studentData,
+          pdfText
+        })
       });
       const result = await response.json();
-      botText = result.answer || botText;
+      if (response.status === 503 && result.loading) {
+        botText = result.answer || 'El modelo se está cargando, intenta nuevamente en unos segundos.';
+      } else {
+        botText = result.answer || botText;
+        score = result.score;
+      }
     } catch (err) {
-      botText = 'Error al consultar OpenAI.';
+      botText = 'Error al consultar el modelo de QA.';
     }
 
     const botResponse: Message = {
       id: (Date.now() + 1).toString(),
-      text: botText,
+      text: score !== undefined ? `${botText}\n\nConfianza: ${(score * 100).toFixed(1)}%` : botText,
       sender: 'bot',
       timestamp: new Date()
     };
