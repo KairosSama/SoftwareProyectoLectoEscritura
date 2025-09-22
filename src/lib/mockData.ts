@@ -32,10 +32,22 @@ export const getAssessmentsByStudent = async (studentId: string): Promise<Assess
   return data || [];
 };
 
-export const createAssessment = async (assessmentData: Omit<Assessment, 'id' | 'created_at'>): Promise<Assessment> => {
-  const { data, error } = await supabase.from('assessments').insert([assessmentData]).select('*').single();
+export const createAssessment = async (
+  assessmentData: Omit<Assessment, 'id' | 'created_at' | 'created_by' | 'evaluator_id'>
+): Promise<Assessment> => {
+  const { data: userData, error: userErr } = await supabase.auth.getUser();
+  if (userErr) throw userErr;
+  const uid = userData?.user?.id;
+  if (!uid) throw new Error('Usuario no autenticado');
+
+  const payload = { ...assessmentData, evaluator_id: uid, created_by: uid } as any;
+  const { data, error } = await supabase
+    .from('assessments')
+    .insert([payload])
+    .select('*')
+    .single();
   if (error) throw error;
-  return data;
+  return data as Assessment;
 };
 import { supabase } from './supabase';
 
@@ -96,6 +108,7 @@ export interface Assessment {
   notes: string;
   evaluator_id: string;
   created_at: string;
+  created_by: string; // propietario para RLS
 }
 
 export interface User {
@@ -184,7 +197,8 @@ export const mockAssessments: Assessment[] = [
     },
     notes: 'Emma muestra buen progreso en reconocimiento de fotos. Necesita más apoyo con tareas de selección.',
     evaluator_id: 'b2c3d4e5-f6a1-8907-bcda-234567890abc',
-    created_at: '2023-11-15T14:30:00Z'
+    created_at: '2023-11-15T14:30:00Z',
+    created_by: 'b2c3d4e5-f6a1-8907-bcda-234567890abc'
   },
   {
     id: 'b8c9d0e1-f2a7-4563-bcda-890abcdef123',
@@ -200,7 +214,8 @@ export const mockAssessments: Assessment[] = [
     },
     notes: 'Lucas demuestra habilidades sólidas de clasificación pero requiere apoyo para correspondencia.',
     evaluator_id: 'c3d4e5f6-a1b2-9078-cdab-34567890abcd',
-    created_at: '2023-11-10T09:15:00Z'
+    created_at: '2023-11-10T09:15:00Z',
+    created_by: 'c3d4e5f6-a1b2-9078-cdab-34567890abcd'
   }
 ];
 
