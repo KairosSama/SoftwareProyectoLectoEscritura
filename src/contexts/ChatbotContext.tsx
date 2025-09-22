@@ -81,7 +81,7 @@ export function ChatbotProvider({ children }: { children: React.ReactNode }) {
     // Construir prompt
     const prompt = `Datos del estudiante:\n${studentData}\n\nPDFs:\n${pdfText}\n\nPregunta del profesor: ${text}`;
 
-    // Llamar al endpoint backend Gemini
+    // Llamar al endpoint backend OpenAI
     let botText = 'No se pudo obtener respuesta.';
     try {
       const response = await fetch('/api/gemini-chatbot', {
@@ -94,7 +94,7 @@ export function ChatbotProvider({ children }: { children: React.ReactNode }) {
       const result = await response.json();
       botText = result.answer || botText;
     } catch (err) {
-      botText = 'Error al consultar Gemini.';
+      botText = 'Error al consultar OpenAI.';
     }
 
     const botResponse: Message = {

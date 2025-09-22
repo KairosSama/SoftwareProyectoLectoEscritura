@@ -12,38 +12,35 @@ export default async function handler(req, res) {
   }
 
 
-  const hfToken = process.env.HUGGINGFACE_API_TOKEN;
-  console.log('HUGGINGFACE_API_TOKEN:', hfToken ? 'Present' : 'Missing');
-  if (!hfToken) {
-    console.error('Hugging Face API token missing');
-    return res.status(500).json({ error: 'Hugging Face API token missing' });
+
+  const openaiApiKey = process.env.OPENAI_API_KEY;
+  console.log('OPENAI_API_KEY:', openaiApiKey ? 'Present' : 'Missing');
+  if (!openaiApiKey) {
+    console.error('OpenAI API key missing');
+    return res.status(500).json({ error: 'OpenAI API key missing' });
   }
 
-  // Gemma-7B-IT model endpoint (chat)
-  const url = 'https://api-inference.huggingface.co/models/google/gemma-7b-it';
+  const url = 'https://api.openai.com/v1/responses';
 
   try {
     const response = await fetch(url, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${hfToken}`,
+        'Authorization': `Bearer ${openaiApiKey}`,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        inputs: prompt,
-        parameters: {
-          max_new_tokens: 256,
-          do_sample: true,
-          temperature: 0.7
-        }
+        model: 'gpt-5-nano',
+        input: prompt,
+        store: false
       })
     });
     const result = await response.json();
-    console.log('Mistral API raw response:', result);
-    const answer = Array.isArray(result) && result[0]?.generated_text ? result[0].generated_text : '';
+    console.log('OpenAI API raw response:', result);
+    const answer = result?.result || result?.output || '';
     res.status(200).json({ answer });
   } catch (err) {
-    console.error('Mistral error:', err);
-    res.status(500).json({ error: 'Error al consultar Mistral', details: err.message });
+    console.error('OpenAI error:', err);
+    res.status(500).json({ error: 'Error al consultar OpenAI', details: err.message });
   }
 }
