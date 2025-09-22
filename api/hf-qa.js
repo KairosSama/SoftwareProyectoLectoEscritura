@@ -4,11 +4,12 @@
 
 const MODEL_URL = 'https://api-inference.huggingface.co/models/deepset/xlm-roberta-base-squad2';
 const DEFAULT_MAX_CHARS = 1500; // max chars per chunk (approx to keep request small)
-const MIN_SCORE_THRESHOLD = 0.2; // below this, we treat as "no answer"
-const MAX_PARAGRAPH_FALLBACK = 2; // number of paragraphs to return in lexical fallback
+const MIN_SCORE_THRESHOLD = 0.05; // lowered to allow weaker spans (diagnostic)
+const MAX_PARAGRAPH_FALLBACK = 3; // allow one more paragraph
 
 // Minimal Spanish stopwords (extend as needed)
-const STOPWORDS = new Set(['el','la','los','las','de','del','un','una','y','o','u','que','en','para','por','con','al','lo','se','su','sus','a','sobre','más','como','qué','cuál','cuáles','donde','dónde','cuando','cuándo','fundamentos','teóricos']);
+// Removed domain terms ("fundamentos", "teóricos") so they remain as keywords.
+const STOPWORDS = new Set(['el','la','los','las','de','del','un','una','y','o','u','que','en','para','por','con','al','lo','se','su','sus','a','sobre','más','como','qué','cuál','cuáles','donde','dónde','cuando','cuándo']);
 
 function chunkText(text, maxChars = DEFAULT_MAX_CHARS) {
   if (!text) return [];
@@ -47,30 +48,57 @@ function normalize(str) {
     .trim();
 }
 
+function expandToken(t) {
+  // Simple morphological/domain expansion for key terms
+  if (t === 'lectoescritura') return ['lectoescritura','lectura','escritura'];
+  if (t === 'fundamentos') return ['fundamentos','fundamento','bases'];
+  if (t === 'teoricos' || t === 'teóricos') return ['teoricos','teóricos','teoria','teórica','teorica'];
+  return [t];
+}
+
 function extractKeywords(question) {
-  const tokens = normalize(question).split(' ').filter(t => t && !STOPWORDS.has(t));
-  // deduplicate
-  return [...new Set(tokens)].slice(0, 12); // cap to avoid over highlighting
+  const raw = normalize(question).split(' ').filter(t => t && !STOPWORDS.has(t));
+  const expanded = raw.flatMap(expandToken);
+  return [...new Set(expanded)].slice(0, 18); // allow a few more after expansion
 }
 
 function lexicalFallback(question, pdfText) {
   if (!pdfText) return null;
   const keywords = extractKeywords(question);
   if (keywords.length === 0) return null;
-  const paragraphs = pdfText.split(/\n{2,}|\r\n{2,}/).map(p => p.trim()).filter(Boolean);
+
+  // Split preserving headings: treat lines that are short and ALL CAPS / Title-like as headings
+  const rawBlocks = pdfText.split(/\n{2,}|\r\n{2,}/).map(b => b.trim()).filter(Boolean);
+
+  // Merge heading with following paragraph if heading very short
+  const paragraphs = [];
+  for (let i = 0; i < rawBlocks.length; i++) {
+    const block = rawBlocks[i];
+    const isHeading = /^([A-ZÁÉÍÓÚÑ0-9IVX\-\s\.]{3,})$/.test(block.replace(/\n/g,'').trim());
+    if (isHeading && i + 1 < rawBlocks.length) {
+      paragraphs.push(block + '\n' + rawBlocks[i + 1]);
+      i++; // skip next
+    } else {
+      paragraphs.push(block);
+    }
+  }
+
   let scored = paragraphs.map((p, idx) => {
     const normP = normalize(p);
     let hits = 0;
     for (const kw of keywords) {
       if (normP.includes(kw)) hits++;
     }
+    // Slight boost if contains both fundamento* and teóri*
+    const hasFund = /fundament/.test(normP);
+    const hasTeor = /teor/.test(normP);
+    if (hasFund && hasTeor) hits += 2;
     return { paragraph: p, hits, idx };
   }).filter(r => r.hits > 0);
   if (scored.length === 0) return null;
   scored.sort((a,b) => b.hits - a.hits || a.idx - b.idx);
   const top = scored.slice(0, MAX_PARAGRAPH_FALLBACK).map(r => r.paragraph);
 
-  // Highlight keywords (simple, case-insensitive)
   const regex = new RegExp(`(${keywords.map(k => k.replace(/[-/\\^$*+?.()|[\]{}]/g,'\\$&')).join('|')})`, 'gi');
   const highlighted = top.map(p => p.replace(regex, '**$1**'));
   return {
