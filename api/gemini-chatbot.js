@@ -19,8 +19,8 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: 'Hugging Face API token missing' });
   }
 
-  // DeepSeek model endpoint (chat)
-  const url = 'https://api-inference.huggingface.co/models/deepseek-ai/deepseek-llm-7b-chat';
+  // Mistral-7B-Instruct model endpoint (chat)
+  const url = 'https://api-inference.huggingface.co/models/mistralai/Mistral-7B-Instruct-v0.2';
 
   try {
     const response = await fetch(url, {
