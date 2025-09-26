@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Dialog } from '@headlessui/react';
+import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { User, Mail, Shield, Edit2, Save, X } from 'lucide-react';
 
@@ -12,16 +13,22 @@ function Profile() {
   });
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleting, setDeleting] = useState(false);
-  // Simulación de eliminación de perfil
-  const handleDeleteStudent = async () => {
+  // Eliminar cuenta de usuario y todos sus datos asociados
+  const handleDeleteAccount = async () => {
     setDeleting(true);
-    // Aquí iría la lógica real para eliminar el perfil del estudiante (por ejemplo, llamada a supabase)
-    setTimeout(() => {
+    // Elimina el usuario de Supabase Auth
+    const { error } = await supabase.auth.admin.deleteUser(user.id);
+    if (error) {
       setDeleting(false);
-      setShowDeleteModal(false);
-      // Redirigir o mostrar mensaje de éxito si es necesario
-      alert('Perfil de estudiante eliminado. Sus registros se mantienen.');
-    }, 1200);
+      alert('Error al eliminar la cuenta: ' + error.message);
+      return;
+    }
+    // Aquí podrías agregar lógica adicional para eliminar datos relacionados si es necesario
+    setDeleting(false);
+    setShowDeleteModal(false);
+    alert('Tu cuenta y todos tus datos han sido eliminados.');
+    // Redirigir al usuario fuera de la app
+    window.location.href = '/';
   };
 
   const handleSave = async () => {
@@ -178,16 +185,16 @@ function Profile() {
       <div className="bg-white rounded-lg shadow-sm border border-red-200 p-6">
         <h2 className="text-xl font-semibold text-red-900 mb-4">Zona de Riesgo</h2>
         <div className="bg-red-50 p-4 rounded-lg">
-          <h3 className="font-medium text-red-900 mb-2">Eliminar estudiante</h3>
+          <h3 className="font-medium text-red-900 mb-2">Eliminar cuenta</h3>
           <p className="text-sm text-red-700 mb-4">
-            Elimina el perfil del estudiante. Sus evaluaciones, informes y registros se mantendrán. Esta acción no se puede deshacer.
+            Elimina tu cuenta de usuario y <b>todos</b> tus datos asociados (estudiantes, informes, evaluaciones, etc). Esta acción no se puede deshacer. Podrás volver a registrarte con el mismo correo, pero no recuperarás tus datos anteriores.
           </p>
           <button
             className="bg-red-600 text-white px-4 py-2 rounded text-sm hover:bg-red-700 transition-colors duration-200"
             onClick={() => setShowDeleteModal(true)}
             disabled={deleting}
           >
-            Eliminar estudiante
+            Eliminar cuenta
           </button>
         </div>
         {/* Modal de confirmación */}
@@ -196,9 +203,9 @@ function Profile() {
             {/* Fondo oscuro */}
             <div className="fixed inset-0 bg-black opacity-30" aria-hidden="true" />
             <Dialog.Panel className="bg-white rounded-lg shadow-xl p-6 z-20 w-full max-w-md mx-auto">
-              <Dialog.Title className="text-lg font-bold text-red-700 mb-2">¿Eliminar estudiante?</Dialog.Title>
+              <Dialog.Title className="text-lg font-bold text-red-700 mb-2">¿Eliminar tu cuenta?</Dialog.Title>
               <Dialog.Description className="mb-4 text-gray-700">
-                ¿Estás seguro que deseas eliminar el perfil del estudiante? Sus registros se mantendrán.
+                ¿Estás seguro que deseas eliminar tu cuenta y <b>todos</b> tus datos asociados? Esta acción no se puede deshacer.
               </Dialog.Description>
               <div className="flex justify-end space-x-4">
                 <button
@@ -210,7 +217,7 @@ function Profile() {
                 </button>
                 <button
                   className="px-4 py-2 rounded bg-red-600 text-white hover:bg-red-700"
-                  onClick={handleDeleteStudent}
+                  onClick={handleDeleteAccount}
                   disabled={deleting}
                 >
                   {deleting ? 'Eliminando...' : 'Sí'}
