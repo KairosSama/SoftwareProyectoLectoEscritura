@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Dialog } from '@headlessui/react';
 import { useAuth } from '../contexts/AuthContext';
 import { User, Mail, Shield, Edit2, Save, X } from 'lucide-react';
 
@@ -9,6 +10,19 @@ function Profile() {
     fullName: user?.fullName || '',
     email: user?.email || '',
   });
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  // Simulación de eliminación de perfil
+  const handleDeleteStudent = async () => {
+    setDeleting(true);
+    // Aquí iría la lógica real para eliminar el perfil del estudiante (por ejemplo, llamada a supabase)
+    setTimeout(() => {
+      setDeleting(false);
+      setShowDeleteModal(false);
+      // Redirigir o mostrar mensaje de éxito si es necesario
+      alert('Perfil de estudiante eliminado. Sus registros se mantienen.');
+    }, 1200);
+  };
 
   const handleSave = async () => {
     // Here you would normally save to the database
@@ -163,16 +177,48 @@ function Profile() {
       {/* Danger Zone */}
       <div className="bg-white rounded-lg shadow-sm border border-red-200 p-6">
         <h2 className="text-xl font-semibold text-red-900 mb-4">Zona de Riesgo</h2>
-        
         <div className="bg-red-50 p-4 rounded-lg">
-          <h3 className="font-medium text-red-900 mb-2">Eliminar Cuenta</h3>
+          <h3 className="font-medium text-red-900 mb-2">Eliminar estudiante</h3>
           <p className="text-sm text-red-700 mb-4">
-            Elimina permanentemente tu cuenta y todos los datos asociados. Esta acción no se puede deshacer.
+            Elimina el perfil del estudiante. Sus evaluaciones, informes y registros se mantendrán. Esta acción no se puede deshacer.
           </p>
-          <button className="bg-red-600 text-white px-4 py-2 rounded text-sm hover:bg-red-700 transition-colors duration-200">
-            Eliminar Cuenta
+          <button
+            className="bg-red-600 text-white px-4 py-2 rounded text-sm hover:bg-red-700 transition-colors duration-200"
+            onClick={() => setShowDeleteModal(true)}
+            disabled={deleting}
+          >
+            Eliminar estudiante
           </button>
         </div>
+        {/* Modal de confirmación */}
+        <Dialog open={showDeleteModal} onClose={() => setShowDeleteModal(false)} className="fixed z-10 inset-0 overflow-y-auto">
+          <div className="fixed inset-0 flex items-center justify-center min-h-screen px-4 z-10">
+            {/* Fondo oscuro */}
+            <div className="fixed inset-0 bg-black opacity-30" aria-hidden="true" />
+            <Dialog.Panel className="bg-white rounded-lg shadow-xl p-6 z-20 w-full max-w-md mx-auto">
+              <Dialog.Title className="text-lg font-bold text-red-700 mb-2">¿Eliminar estudiante?</Dialog.Title>
+              <Dialog.Description className="mb-4 text-gray-700">
+                ¿Estás seguro que deseas eliminar el perfil del estudiante? Sus registros se mantendrán.
+              </Dialog.Description>
+              <div className="flex justify-end space-x-4">
+                <button
+                  className="px-4 py-2 rounded bg-gray-200 text-gray-800 hover:bg-gray-300"
+                  onClick={() => setShowDeleteModal(false)}
+                  disabled={deleting}
+                >
+                  No
+                </button>
+                <button
+                  className="px-4 py-2 rounded bg-red-600 text-white hover:bg-red-700"
+                  onClick={handleDeleteStudent}
+                  disabled={deleting}
+                >
+                  {deleting ? 'Eliminando...' : 'Sí'}
+                </button>
+              </div>
+            </Dialog.Panel>
+          </div>
+        </Dialog>
       </div>
     </div>
   );
