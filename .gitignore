@@ -1,5 +1,6 @@
 # Evitar subir variables de entorno
 .env
+.env.local
 # Logs
 logs
 *.log
