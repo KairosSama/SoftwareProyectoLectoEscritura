@@ -1,4 +1,3 @@
-import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import { ChatbotProvider } from './contexts/ChatbotContext';
@@ -16,6 +15,7 @@ import Profile from './pages/Profile';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 import AssessmentDetail from './pages/AssessmentDetail';
 import AllAssessments from './pages/AllAssessments';
+import Documents from './pages/Documents';
 
 function App() {
   return (
@@ -122,6 +122,16 @@ function App() {
                   <ProtectedRoute>
                     <Navbar />
                     <AllAssessments />
+                    <ChatbotWidget />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/documents"
+                element={
+                  <ProtectedRoute>
+                    <Navbar />
+                    <Documents />
                     <ChatbotWidget />
                   </ProtectedRoute>
                 }

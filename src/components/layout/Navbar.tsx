@@ -33,6 +33,7 @@ function Navbar() {
     { path: '/students', label: 'Estudiantes', icon: Users },
     { path: '/lectoescritura', label: 'Lectoescritura', icon: BookOpen },
     { path: '/matematica', label: 'Matemática', icon: Calculator },
+    { path: '/documents', label: 'Documentos', icon: ClipboardList },
     { path: '/reports', label: 'Reportes', icon: BarChart3 },
   ];
 
