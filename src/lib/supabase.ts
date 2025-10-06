@@ -10,7 +10,18 @@ import { createClient } from '@supabase/supabase-js';
 // Nota: Este mock devuelve estructuras vacías y valores predecibles.
 // Sólo cubre los métodos usados en mockData.ts y hooks asociados.
 
-const isTest = Boolean((import.meta as any).vitest);
+// Detección robusta de entorno de test:
+// - import.meta.vitest (propiedad oficial de Vitest)
+// - process.env.VITEST (fallback)
+// - process.env.NODE_ENV === 'test'
+// - import.meta.env.MODE === 'test'
+// Cualquiera de estos activa el modo mock si además faltan las env reales.
+const isVitestFlag = Boolean((import.meta as any).vitest);
+// Comprobamos de forma segura la existencia de process (Node / Vitest)
+const isProcessTest = typeof process !== 'undefined' && !!(process.env?.VITEST || process.env?.NODE_ENV === 'test');
+const isModeTest = Boolean((import.meta as any).env?.MODE === 'test');
+const isTest = isVitestFlag || isProcessTest || isModeTest;
+
 // Declaramos la variable que exportaremos al final.
 let supabase: any; // eslint-disable-line @typescript-eslint/no-explicit-any
 
@@ -39,9 +50,10 @@ if (isTest) {
 		from: (_table: string) => makeBuilder([])
 	};
 } else {
-	const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
-	const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
+	const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string | undefined;
+	const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
 	if (!supabaseUrl || !supabaseAnonKey) {
+		// En ejecución no-test sí mantenemos el error para detectar mala configuración temprana.
 		throw new Error('Faltan variables VITE_SUPABASE_URL o VITE_SUPABASE_ANON_KEY');
 	}
 	supabase = createClient(supabaseUrl, supabaseAnonKey);
