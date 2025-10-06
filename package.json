@@ -11,7 +11,7 @@
     "test": "vitest run",
     "test:ui": "vitest",
     "analyze": "vite build --mode analyze",
-    "test:coverage": "vitest run --coverage --reporter=default --reporter=lcov"
+    "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
     "@headlessui/react": "^2.2.9",
