@@ -48,7 +48,15 @@ export function __createSupabaseInternal(opts: {
 			return builder;
 		};
 		return {
-			auth: { getUser: async () => ({ data: { user: { id: 'test-user' } }, error: null }) },
+				auth: {
+					getUser: async () => ({ data: { user: { id: 'test-user' } }, error: null }),
+					getSession: async () => ({ data: { session: { user: { id: 'test-user' } } }, error: null }),
+					onAuthStateChange: (_cb: any) => ({ data: { subscription: { unsubscribe: () => {} } } }), // eslint-disable-line @typescript-eslint/no-explicit-any
+					signInWithPassword: async (_creds: any) => ({ data: { user: { id: 'test-user' } }, error: null }), // eslint-disable-line @typescript-eslint/no-explicit-any
+					signUp: async (_data: any) => ({ data: { user: { id: 'test-user' } }, error: null }), // eslint-disable-line @typescript-eslint/no-explicit-any
+					signOut: async () => ({ error: null }),
+					resetPasswordForEmail: async (_email: string) => ({ data: {}, error: null })
+				},
 			from: (_table: string) => makeBuilder([])
 		};
 	}
