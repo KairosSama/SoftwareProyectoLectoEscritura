@@ -27,7 +27,7 @@ const PdfPreviewModal: React.FC<PdfPreviewModalProps> = ({ isOpen, onClose, stag
   if (!isOpen) return null;
   return (
     <div className="fixed inset-0 z-50" role="dialog" aria-modal="true" aria-label="Previsualización PDF" aria-describedby="pdf-modal-desc">
-      <div className="absolute inset-0 bg-black/50" onClick={onClose} />
+  <div className="absolute inset-0 bg-black/50" data-testid="pdf-overlay" onClick={onClose} />
       <div className="absolute inset-0 flex items-center justify-center p-4">
         <div className="bg-white w-full max-w-6xl rounded-lg shadow-xl overflow-hidden" ref={pdfPreviewRef}>
           <div className="flex items-center justify-between px-4 py-3 border-b">
@@ -40,7 +40,7 @@ const PdfPreviewModal: React.FC<PdfPreviewModalProps> = ({ isOpen, onClose, stag
               <div className="border rounded-lg p-3">
                 <div className="text-sm font-semibold mb-2">Etapas a incluir</div>
                 <div className="grid grid-cols-3 gap-2 text-sm">
-                  {[1,2,3,4,5].map(n => <label key={n} className="inline-flex items-center gap-1"><input type="checkbox" checked={stages.includes(n)} onChange={()=>toggleStage(n)} className="rounded border-gray-300" /><span>Et {n}</span></label>)}
+                  {[1,2,3,4,5].map(n => <label key={n} className="inline-flex items-center gap-1"><input data-testid={`stage-${n}`} type="checkbox" checked={stages.includes(n)} onChange={()=>toggleStage(n)} className="rounded border-gray-300" /><span>Et {n}</span></label>)}
                 </div>
               </div>
               <div className="border rounded-lg p-3 max-h-64 overflow-auto">
@@ -48,7 +48,7 @@ const PdfPreviewModal: React.FC<PdfPreviewModalProps> = ({ isOpen, onClose, stag
                 {assessments.length? <div className="space-y-2" aria-label="Lista de evaluaciones">
                   {assessments.slice().sort((a,b)=> new Date(b.created_at).getTime()-new Date(a.created_at).getTime()).map(a => (
                     <label key={a.id} className="flex items-start gap-2 text-xs">
-                      <input type="checkbox" className="mt-1 rounded border-gray-300" checked={selectedIds.has(a.id)} onChange={()=>toggleEval(a.id)} />
+                      <input data-testid={`eval-${a.id}`} type="checkbox" className="mt-1 rounded border-gray-300" checked={selectedIds.has(a.id)} onChange={()=>toggleEval(a.id)} />
                       <span><span className="font-medium">{new Date(a.created_at).toLocaleString()}</span> — <span className="uppercase">{a.module_id}</span> (Et {a.stage})</span>
                     </label>
                   ))}

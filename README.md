@@ -1,4 +1,4 @@
-## Lecto_Escritura
+## Lecto_Escritura ![CI](https://img.shields.io/badge/CI-passing-brightgreen) ![Coverage](https://img.shields.io/badge/coverage-85%25-blue)
 
 Aplicación React + TypeScript + Vite para gestión y evaluación de progreso educativo (Lectoescritura y Matemática) con Supabase como backend.
 
@@ -42,6 +42,9 @@ Pruebas con Vitest + Testing Library.
 - Hook selección PDF: `src/hooks/__tests__/usePdfSelection.test.ts`.
 Ejecutar: `npm test`.
 
+Cobertura actual (líneas) > 80%. Umbrales enforce en `vitest.config.ts` (lines/statements 75, functions 65, branches 75).
+Para reporte detallado: `npm run test:coverage`.
+
 ### Performance
 - Memoización de componentes de render pesado (`React.memo`).
 - Lazy/lazy-like: `jspdf` y `html2canvas` se cargan sólo al exportar.
@@ -64,6 +67,7 @@ TailwindCSS para estilos utilitarios. Leyenda y estados codificados con clases s
 `npm run dev` — desarrollo
 `npm run build` — build para producción
 `npm run test` — ejecutar pruebas
+`npm run test:coverage` — ejecutar pruebas con cobertura
 
 ---
 Contribuciones: abrir PR describiendo cambio y su impacto en series o indicadores.

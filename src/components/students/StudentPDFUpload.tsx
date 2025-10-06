@@ -23,11 +23,26 @@ export default function StudentPDFUpload({ studentId, onUpload }: StudentPDFUplo
   };
 
   const handleUpload = async () => {
-    if (!file || !user) return;
+    if (!file) return; // sin archivo no hacemos nada
     setLoading(true);
     setError('');
     setSuccess(false);
     try {
+      // Asegurarnos de tener un usuario (el contexto puede tardar en hidratarse)
+      let currentUser = user as any;
+      if (!currentUser) {
+        try {
+          const { data } = await supabase.auth.getUser();
+          currentUser = data?.user;
+        } catch (_) {
+          /* ignorar */
+        }
+      }
+      if (!currentUser) {
+        setError('Usuario no autenticado');
+        return;
+      }
+
       const filePath = `${studentId}/${Date.now()}_${file.name}`;
       const { data, error: uploadError } = await supabase.storage
         .from(BUCKET_NAME)
@@ -41,29 +56,33 @@ export default function StudentPDFUpload({ studentId, onUpload }: StudentPDFUplo
           {
             student_id: studentId,
             file_url: fileUrl,
-            created_by: user.id
+            created_by: currentUser.id
           }
         ])
         .select();
       if (dbError) throw dbError;
 
-      // Llamar a la Edge Function para extraer texto
+      // Llamar a la Edge Function para extraer texto (no bloqueamos éxito si falla)
       const documentId = docData?.[0]?.id;
       if (documentId) {
-        await fetch('https://<TU-PROYECTO>.functions.supabase.co/extract-pdf-text', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            documentId,
-            fileUrl: supabase.storage.from(BUCKET_NAME).getPublicUrl(fileUrl).data.publicUrl
-          })
-        });
+        try {
+          await fetch('https://<TU-PROYECTO>.functions.supabase.co/extract-pdf-text', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              documentId,
+              fileUrl: supabase.storage.from(BUCKET_NAME).getPublicUrl(fileUrl).data.publicUrl
+            })
+          });
+        } catch (_) {
+          // Silenciamos errores de la función edge para no impedir feedback al usuario
+        }
       }
       setSuccess(true);
       setFile(null);
       if (onUpload) onUpload();
     } catch (err: any) {
-      setError(err.message || 'Error al subir el PDF');
+      setError(err?.message || 'Error al subir el PDF');
     } finally {
       setLoading(false);
     }
@@ -72,7 +91,7 @@ export default function StudentPDFUpload({ studentId, onUpload }: StudentPDFUplo
   return (
     <div className="bg-white rounded-lg shadow p-4 border border-gray-200">
       <h3 className="text-lg font-semibold mb-2">Subir PDF del estudiante</h3>
-      <input type="file" accept="application/pdf" onChange={handleFileChange} />
+  <input aria-label="PDF" type="file" accept="application/pdf" onChange={handleFileChange} />
       <button
         className="mt-2 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:opacity-50"
         onClick={handleUpload}

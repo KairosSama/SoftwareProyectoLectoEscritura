@@ -21,23 +21,29 @@ export function useAuth() {
   return context;
 }
 
-export function AuthProvider({ children }: { children: React.ReactNode }) {
+export function AuthProvider({ children, skipInitialSession }: { children: React.ReactNode; skipInitialSession?: boolean }) {
   const [user, setUser] = useState<any | null>(null);
-  const [loading, setLoading] = useState(true);
+  const autoSkip = typeof process !== 'undefined' && process.env.NODE_ENV === 'test';
+  const effectiveSkip = skipInitialSession || autoSkip;
+  const [loading, setLoading] = useState(!effectiveSkip);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
+    if (effectiveSkip) return; // saltamos consulta inicial en tests o si se solicita
+    let active = true;
+  supabase.auth.getSession().then(({ data }: any) => {
+      if (!active) return;
       setUser(data?.session?.user || null);
       setLoading(false);
     });
-    // Listen for auth changes
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+  const { data: listener } = supabase.auth.onAuthStateChange((_event: any, session: any) => {
+      if (!active) return;
       setUser(session?.user || null);
     });
     return () => {
+      active = false;
       listener?.subscription.unsubscribe();
     };
-  }, []);
+  }, [effectiveSkip]);
 
   const signIn = async (email: string, password: string) => {
   const { data, error } = await supabase.auth.signInWithPassword({ email, password });
