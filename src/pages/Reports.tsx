@@ -102,8 +102,21 @@ const Reports: React.FC = () => {
     let autonomous = 0, support = 0, notAchieved = 0;
     students.forEach(st => {
       const list = assessments.filter(a => a.student_id === st.id);
-      let total=0, sa=0, ap=0, np=0; list.forEach(a => { Object.values(a.indicators||{}).forEach(v=>{ total++; if (v==='SA') sa++; else if (v==='AP') ap++; else np++; }); });
-      if (total>0) { const saRate=(sa/total)*100; const apRate=(ap/total)*100; if (saRate>60) autonomous++; else if (apRate>50) support++; else notAchieved++; }
+      let total=0, sa=0, ap=0; 
+      list.forEach(a => { 
+        Object.values(a.indicators||{}).forEach(v=>{ 
+          total++; 
+          if (v==='SA') sa++; 
+          else if (v==='AP') ap++; 
+        }); 
+      });
+      if (total>0) { 
+        const saRate=(sa/total)*100; 
+        const apRate=(ap/total)*100; 
+        if (saRate>60) autonomous++; 
+        else if (apRate>50) support++; 
+        else notAchieved++; 
+      }
     });
     return { labels: ['Autónomos','Con Apoyo','No Logrado'], values: [
       Math.round((autonomous / students.length)*100),

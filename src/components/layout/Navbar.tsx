@@ -6,7 +6,6 @@ import {
   Users, 
   ClipboardList, 
   BarChart3, 
-  MessageCircle, 
   User, 
   LogOut,
   GraduationCap,

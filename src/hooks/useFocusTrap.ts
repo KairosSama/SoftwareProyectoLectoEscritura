@@ -7,7 +7,7 @@ export function useFocusTrap(containerRef: React.RefObject<HTMLElement>, active:
     const focusable = () => Array.from(container.querySelectorAll<HTMLElement>(
       'a[href],button:not([disabled]),textarea,input[type="text"],input[type="checkbox"],input[type="radio"],select,[tabindex]:not([tabindex="-1"])'
     ));
-    let prevFocus: Element | null = document.activeElement;
+  const prevFocus: Element | null = document.activeElement;
     const list = focusable();
     if (list.length) (list[0] as HTMLElement).focus();
 
