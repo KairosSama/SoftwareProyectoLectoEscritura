@@ -1,287 +1,227 @@
-import React from 'react';
-import { useEffect, useState } from 'react';
-import { BarChart3, Calendar } from 'lucide-react';
-import BarChart from '../components/BarChart';
-import { getStudents, getAssessments, Student, Assessment, calculateProgressStatus } from '../lib/mockData';
-import jsPDF from 'jspdf';
+import React, { useEffect, useMemo, useRef, useState, Suspense, lazy } from 'react';
+import { BarChart3, Download, Table, User } from 'lucide-react';
+import { useStudents } from '../hooks/useStudents';
+import { useStudentAssessments } from '../hooks/useStudentAssessments';
+import { usePdfSelection } from '../hooks/usePdfSelection';
+import { calculateProgressStatus } from '../lib/mockData';
+import BarChartMiniRaw from '../components/reports/BarChartMini';
+import StageTableRaw from '../components/reports/StageTable';
+import Tooltip from '../components/reports/Tooltip';
+import Legend from '../components/reports/Legend';
+import { TooltipState } from '../components/reports/types';
+import { buildSeriesAndOrder } from '../components/reports/series';
+import LoadingSpinner from '../components/ui/LoadingSpinner';
+import Skeleton from '../components/ui/Skeleton';
+const PdfPreviewModal = lazy(()=> import('../components/reports/PdfPreviewModal'));
 
-function Reports() {
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
-  const [students, setStudents] = useState<Student[]>([]);
-  const [assessments, setAssessments] = useState<Assessment[]>([]);
-  const [selectedStudentId, setSelectedStudentId] = useState<string>('');
-  const [individualReport, setIndividualReport] = useState<Assessment[]>([]);
-  const [classSummary, setClassSummary] = useState<{ labels: string[]; values: number[] }>({ labels: [], values: [] });
+// Memo wrappers para reducir renders de tablas y gráficos grandes
+const BarChartMini = React.memo(BarChartMiniRaw);
+const StageTable = React.memo(StageTableRaw);
 
-  useEffect(() => {
-    async function fetchData() {
-  const s = await getStudents();
-  const a = await getAssessments();
-      setStudents(s);
-      setAssessments(a);
-    }
-    fetchData();
-  }, []);
+// Nota: el archivo legacy permanece sin renombrar como solicitaste.
 
-  useEffect(() => {
-    if (selectedStudentId) {
-      let filtered = assessments.filter(a => a.student_id === selectedStudentId);
-      if (startDate) {
-        filtered = filtered.filter(a => new Date(a.created_at) >= new Date(startDate));
-      }
-      if (endDate) {
-        filtered = filtered.filter(a => new Date(a.created_at) <= new Date(endDate));
-      }
-      // Ordenar por fecha descendente para mostrar primero la evaluación más reciente
-      filtered = filtered.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-      setIndividualReport(filtered);
-    } else {
-      setIndividualReport([]);
-    }
-  }, [selectedStudentId, assessments]);
+// (buildSeriesAndOrder y buildPdfSeries movidos a helpers en 'series.ts')
 
-  useEffect(() => {
-    // Resumen de la clase: porcentaje de estudiantes autónomos, con apoyo, no logrados
-    if (students.length && assessments.length) {
-      let autonomous = 0, support = 0, notAchieved = 0;
-      students.forEach(student => {
-        const studentAssessments = assessments.filter(a => a.student_id === student.id);
-        let totalIndicators = 0, sa = 0, ap = 0, np = 0;
-        studentAssessments.forEach(a => {
-          Object.values(a.indicators).forEach(val => {
-            totalIndicators++;
-            if (val === 'SA') sa++;
-            else if (val === 'AP') ap++;
-            else np++;
-          });
-        });
-        if (totalIndicators > 0) {
-          const saRate = (sa / totalIndicators) * 100;
-          const apRate = (ap / totalIndicators) * 100;
-          if (saRate > 60) autonomous++;
-          else if (apRate > 50) support++;
-          else notAchieved++;
-        }
-      });
-      setClassSummary({
-        labels: ['Autónomos', 'Con Apoyo', 'No Logrado'],
-        values: [
-          Math.round((autonomous / students.length) * 100),
-          Math.round((support / students.length) * 100),
-          Math.round((notAchieved / students.length) * 100)
-        ]
-      });
-    }
-  }, [students, assessments]);
+const Reports: React.FC = () => {
+  // Estado base
+  const { students, loading: loadingStudents, error: studentsError } = useStudents();
+  const [studentId, setStudentId] = useState<string>('');
+  const { assessments, loading: loadingAssessments, error: assessmentsError } = useStudentAssessments(studentId);
+  const [stage, setStage] = useState<number>(1);
+  const [selectedIndex, setSelectedIndex] = useState(0);
 
-  const handleExportPDF = () => {
-    const doc = new jsPDF();
-    doc.text('Reporte de Progreso Individual', 10, 10);
-    if (individualReport.length) {
-      individualReport.forEach((a, idx) => {
-        doc.text(`Etapa: ${a.stage} | Módulo: ${a.module_id} | Fecha: ${new Date(a.created_at).toLocaleDateString('es-ES')}`, 10, 20 + idx * 10);
-        doc.text(`Indicadores: ${Object.entries(a.indicators).map(([k, v]) => `${k}: ${v}`).join(', ')}`, 10, 25 + idx * 10);
-        doc.text(`Notas: ${a.notes || 'Sin notas'}`, 10, 30 + idx * 10);
-      });
-    } else {
-      doc.text('No hay evaluaciones para este estudiante.', 10, 20);
-    }
-    doc.save('reporte_individual.pdf');
+  // Selección PDF
+  const { pdfStages, pdfSelectedIds, toggleEval, toggleStage, ensureStageIncluded, syncAssessments } = usePdfSelection(stage, assessments);
+  useEffect(() => { syncAssessments(); }, [assessments, syncAssessments]);
+  useEffect(() => { ensureStageIncluded(stage); }, [stage]);
+
+  // Seleccionar estudiante inicial
+  useEffect(() => { if (students.length && !studentId) setStudentId(students[0].id); }, [students, studentId]);
+
+  // Filtrar por etapa
+  const filteredByStage = useMemo(() => assessments.filter(a => a.stage === stage), [assessments, stage]);
+  useEffect(() => { setSelectedIndex(0); }, [stage, assessments.length]);
+  const activeAssessment = useMemo(() => filteredByStage[selectedIndex] ?? filteredByStage[0] ?? null, [filteredByStage, selectedIndex]);
+
+  // Series para gráficos principales
+  const lecto = useMemo(() => buildSeriesAndOrder('lectoescritura', filteredByStage), [filteredByStage]);
+  const mate = useMemo(() => buildSeriesAndOrder('matematica', filteredByStage), [filteredByStage]);
+
+  // Tooltip
+  const [tip, setTip] = useState<TooltipState>({ visible: false, x: 0, y: 0 });
+  const makeHoverHandlerMain = (series: { label: string; values: number[] }[], title: string) => (i: number, e: React.MouseEvent<SVGRectElement>) => {
+    if (!series.length) return;
+    setTip({ visible: true, x: e.clientX, y: e.clientY, title: `${title} — Eval ${i + 1}`, lines: series.map(s => ({ name: s.label, value: s.values[i] ?? 0 })) });
+  };
+  const hideTooltip = () => setTip(t => ({ ...t, visible: false }));
+  const handleBarClick = (orderAscIds: string[]) => (i: number) => {
+    const id = orderAscIds[i];
+    const idx = filteredByStage.findIndex(a => a.id === id);
+    if (idx !== -1) setSelectedIndex(idx);
   };
 
+  // PDF preview + descarga
+  const pdfPreviewRef = useRef<HTMLDivElement>(null);
+  const [showPdfModal, setShowPdfModal] = useState(false);
+  const openPdfModal = () => { ensureStageIncluded(stage); setShowPdfModal(true); };
+  const closePdfModal = () => setShowPdfModal(false);
+
+  // buildPdfSeries ahora importada
+
+  const downloadFromPreview = async () => {
+    if (!pdfPreviewRef.current) return;
+    const [{ default: jsPDF }, { default: html2canvas }] = await Promise.all([
+      import('jspdf'),
+      import('html2canvas')
+    ]);
+    const root = pdfPreviewRef.current;
+    const pages = Array.from(root.querySelectorAll<HTMLElement>('.pdf-page'));
+    const pdf = new jsPDF('p','pt','a4');
+    const margin = 40;
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const pageHeight = pdf.internal.pageSize.getHeight();
+    const usableWidth = pageWidth - margin*2;
+    const usableHeight = pageHeight - margin*2;
+    let first = true;
+    for (const page of pages) {
+      const canvas = await html2canvas(page, { scale: 2, useCORS: true, scrollY: -window.scrollY });
+      const s = Math.min(usableWidth / canvas.width, usableHeight / canvas.height);
+      const imgW = canvas.width * s; const imgH = canvas.height * s;
+      const imgData = canvas.toDataURL('image/png');
+      if (!first) pdf.addPage(); first = false;
+      const x = margin + Math.max(0, (usableWidth - imgW)/2);
+      const y = margin + Math.max(0, (usableHeight - imgH)/2);
+      pdf.addImage(imgData, 'PNG', x, y, imgW, imgH);
+    }
+    pdf.save('reporte.pdf');
+  };
+
+  // Derivar resumen de clase (sólo para conservar info del legacy en futuro, simplificado)
+  const classSummary = useMemo(() => {
+    if (!students.length || !assessments.length) return { labels: ['Autónomos','Con Apoyo','No Logrado'], values: [0,0,0] };
+    let autonomous = 0, support = 0, notAchieved = 0;
+    students.forEach(st => {
+      const list = assessments.filter(a => a.student_id === st.id);
+      let total=0, sa=0, ap=0, np=0; list.forEach(a => { Object.values(a.indicators||{}).forEach(v=>{ total++; if (v==='SA') sa++; else if (v==='AP') ap++; else np++; }); });
+      if (total>0) { const saRate=(sa/total)*100; const apRate=(ap/total)*100; if (saRate>60) autonomous++; else if (apRate>50) support++; else notAchieved++; }
+    });
+    return { labels: ['Autónomos','Con Apoyo','No Logrado'], values: [
+      Math.round((autonomous / students.length)*100),
+      Math.round((support / students.length)*100),
+      Math.round((notAchieved / students.length)*100)
+    ] };
+  }, [students, assessments]);
+
+  const loading = loadingStudents || loadingAssessments;
+
   return (
-    <div className="max-w-7xl mx-auto px-4 py-8 space-y-8">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <div className="max-w-7xl mx-auto p-4 space-y-6">
+      <Tooltip tip={tip} />
+
+      <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Reportes y Analíticas</h1>
-          <p className="text-gray-600 mt-2">
-            Rastrea el progreso de los estudiantes y genera reportes completos
-          </p>
+          <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Reportes y Analíticas</h1>
+          <p className="text-gray-600 mt-1">Seguimiento avanzado del progreso y exportación a PDF.</p>
         </div>
-      </div>
+        <button onClick={openPdfModal} disabled={!assessments.length} className="inline-flex items-center gap-2 bg-blue-600 disabled:opacity-50 text-white px-4 py-2 rounded-md hover:bg-blue-700">
+          <Download className="h-4 w-4" /> PDF / Previsualizar
+        </button>
+      </header>
 
-      {/* Quick Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-          <div className="flex items-center justify-between mb-2">
-            <h3 className="text-sm font-medium text-gray-600">Total de Estudiantes</h3>
-            <BarChart3 className="h-5 w-5 text-blue-600" />
+      {/* Filtros */}
+      <section className="bg-white rounded-lg border p-4 space-y-4">
+        <div className="grid md:grid-cols-4 gap-4">
+          <div className="col-span-2">
+            <label htmlFor="student-select" className="text-sm text-gray-600 flex items-center gap-2"><User className="h-4 w-4 text-gray-500" /> Estudiante</label>
+            <select id="student-select" className="mt-1 w-full border rounded-md px-3 py-2" value={studentId} onChange={e=>setStudentId(e.target.value)}>
+              {students.map(s => <option key={s.id} value={s.id}>{s.full_name}</option>)}
+            </select>
           </div>
-          <p className="text-2xl font-bold text-gray-900">{students.length}</p>
-          <p className="text-xs text-gray-500 mt-1">Activos en el programa</p>
+          <div>
+            <label htmlFor="stage-select" className="text-sm text-gray-600">Etapa</label>
+            <select id="stage-select" className="mt-1 w-full border rounded-md px-3 py-2" value={stage} onChange={e=>setStage(parseInt(e.target.value))}>
+              {[1,2,3,4,5].map(v => <option key={v} value={v}>{v}</option>)}
+            </select>
+          </div>
+          <div>
+            <label htmlFor="assessment-select" className="text-sm text-gray-600">Evaluación</label>
+            <select id="assessment-select" className="mt-1 w-full border rounded-md px-3 py-2" value={selectedIndex} onChange={e=>setSelectedIndex(parseInt(e.target.value))} disabled={!filteredByStage.length}>
+              {filteredByStage.map((a,i)=>(<option key={a.id} value={i}>{new Date(a.created_at).toLocaleString()} — {a.module_id} (Etapa {a.stage})</option>))}
+            </select>
+          </div>
         </div>
+  <div className="text-xs text-gray-500">{loading ? <LoadingSpinner small label="Cargando datos" /> : assessments.length ? `${assessments.length} evaluaciones cargadas` : 'Sin evaluaciones para mostrar.'}</div>
+        {(studentsError || assessmentsError) && <div className="text-sm text-red-600">Error: {studentsError || assessmentsError}</div>}
+      </section>
 
-        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-          <div className="flex items-center justify-between mb-2">
-            <h3 className="text-sm font-medium text-gray-600">Evaluaciones</h3>
-            <BarChart3 className="h-5 w-5 text-green-600" />
-          </div>
-          <p className="text-2xl font-bold text-gray-900">{assessments.length}</p>
-          <p className="text-xs text-gray-500 mt-1">Completadas en total</p>
+      {/* Gráficos */}
+      <section className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div className="bg-white rounded-lg border p-3">
+          <div className="flex items-center gap-2 mb-2"><BarChart3 className="h-5 w-5 text-blue-600" /><h3 className="font-semibold text-gray-900">Lectoescritura — Etapa {stage}</h3></div>
+          {loading ? <Skeleton lines={6} className="mt-2" lineClassName="w-full" /> : lecto.series.length ? <BarChartMini series={lecto.series} title="Histórico" onBarHover={makeHoverHandlerMain(lecto.series, 'Lectoescritura')} onLeave={hideTooltip} onBarClick={handleBarClick(lecto.orderAscIds)} /> : <p className="text-sm text-gray-600">Sin datos.</p>}
         </div>
-
-        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-          <div className="flex items-center justify-between mb-2">
-            <h3 className="text-sm font-medium text-gray-600">Progreso Promedio</h3>
-            <BarChart3 className="h-5 w-5 text-purple-600" />
-          </div>
-          <p className="text-2xl font-bold text-gray-900">{
-            assessments.length > 0
-              ? `${Math.round(
-                  assessments.reduce((acc, a) => acc + (Object.values(a.indicators).filter(v => v === 'SA' || v === 'AP').length / Object.keys(a.indicators).length) * 100, 0) / assessments.length
-                )}%`
-              : '0%'
-          }</p>
-          <p className="text-xs text-gray-500 mt-1">En todas las etapas</p>
+        <div className="bg-white rounded-lg border p-3">
+          <div className="flex items-center gap-2 mb-2"><BarChart3 className="h-5 w-5 text-blue-600" /><h3 className="font-semibold text-gray-900">Matemática — Etapa {stage}</h3></div>
+          {loading ? <Skeleton lines={6} className="mt-2" lineClassName="w-full" /> : mate.series.length ? <BarChartMini series={mate.series} title="Histórico" onBarHover={makeHoverHandlerMain(mate.series, 'Matemática')} onLeave={hideTooltip} onBarClick={handleBarClick(mate.orderAscIds)} /> : <p className="text-sm text-gray-600">Sin datos.</p>}
         </div>
+      </section>
 
-        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-          <div className="flex items-center justify-between mb-2">
-            <h3 className="text-sm font-medium text-gray-600">Autónomos</h3>
-            <BarChart3 className="h-5 w-5 text-orange-600" />
-          </div>
-          <p className="text-2xl font-bold text-gray-900">{
-            students.length > 0
-              ? `${Math.round(
-                  (students.filter(student => {
-                    const studentAssessments = assessments.filter(a => a.student_id === student.id);
-                    let totalIndicators = 0, sa = 0;
-                    studentAssessments.forEach(a => {
-                      Object.values(a.indicators).forEach(val => {
-                        totalIndicators++;
-                        if (val === 'SA') sa++;
-                      });
-                    });
-                    return totalIndicators > 0 && (sa / totalIndicators) * 100 > 60;
-                  }).length / students.length) * 100
-                )}`
-              : '0'
-          }%</p>
-          <p className="text-xs text-gray-500 mt-1">Estudiantes que muestran independencia</p>
-        </div>
-      </div>
+      {/* Tabla de tareas */}
+      <section className="bg-white rounded-lg border p-4">
+        <div className="flex items-center gap-2 mb-3"><Table className="h-5 w-5 text-blue-600" /><h3 className="font-semibold text-gray-900">Tareas y preguntas — (Eval seleccionada / Etapa {activeAssessment?.stage ?? stage})</h3></div>
+        {activeAssessment ? <StageTable assessment={activeAssessment} /> : <div className="text-sm text-gray-600">No hay evaluación cargada.</div>}
+      </section>
 
-      {/* Report Types */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition-shadow duration-200">
-          <div className="h-12 w-12 bg-blue-100 rounded-lg flex items-center justify-center mb-4">
-            <BarChart3 className="h-6 w-6 text-blue-600" />
+      {/* Resumen evaluaciones */}
+      <section className="bg-white rounded-lg border p-4">
+        <h3 className="font-semibold text-gray-900 mb-3">Evaluaciones del estudiante (Etapa {stage})</h3>
+        {filteredByStage.length ? (
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200 text-sm">
+              <thead className="bg-gray-50"><tr><th className="px-4 py-2 text-left">Fecha</th><th className="px-4 py-2 text-left">Módulo/Etapa</th><th className="px-4 py-2 text-left">Completado</th><th className="px-4 py-2 text-left">Autónomo</th><th className="px-4 py-2 text-left">Con apoyo</th><th className="px-4 py-2 text-left">Notas</th></tr></thead>
+              <tbody className="divide-y divide-gray-100">
+                {filteredByStage.slice().reverse().map(a => {
+                  const stat = calculateProgressStatus(a);
+                  return <tr key={a.id}><td className="px-4 py-2">{new Date(a.created_at).toLocaleString()}</td><td className="px-4 py-2">{a.module_id} / {a.stage}</td><td className="px-4 py-2">{stat.completionRate}%</td><td className="px-4 py-2">{stat.autonomousRate}%</td><td className="px-4 py-2">{stat.supportRate}%</td><td className="px-4 py-2 max-w-md text-gray-700">{a.notes}</td></tr>;
+                })}
+              </tbody>
+            </table>
           </div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">
-              Reporte de Progreso Individual
-            </h3>
-            <p className="text-gray-600 text-sm mb-4">
-              Análisis detallado del progreso de cada estudiante en todas las etapas de evaluación
-            </p>
-            <div className="mb-4 grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Selecciona estudiante:</label>
-                <select
-                  className="border border-gray-300 rounded px-2 py-1 w-full"
-                  value={selectedStudentId}
-                  onChange={e => setSelectedStudentId(e.target.value)}
-                >
-                  <option value="">-- Selecciona --</option>
-                  {students.map(s => (
-                    <option key={s.id} value={s.id}>{s.full_name}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Desde:</label>
-                <input
-                  type="date"
-                  className="border border-gray-300 rounded px-2 py-1 w-full"
-                  value={startDate}
-                  onChange={e => setStartDate(e.target.value)}
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Hasta:</label>
-                <input
-                  type="date"
-                  className="border border-gray-300 rounded px-2 py-1 w-full"
-                  value={endDate}
-                  onChange={e => setEndDate(e.target.value)}
-                />
-              </div>
+        ) : <p className="text-sm text-gray-600">No hay evaluaciones registradas para esta etapa.</p>}
+      </section>
+
+      {/* Resumen de clase (simple) */}
+      <section className="bg-white rounded-lg border p-4">
+        <h3 className="font-semibold text-gray-900 mb-2">Resumen de la Clase</h3>
+        <div className="flex flex-wrap gap-4 items-center">
+          {classSummary.labels.map((l,i)=>(
+            <div key={l} className="flex flex-col items-center text-sm">
+              <span className="font-medium text-gray-700">{l}</span>
+              <span className="text-blue-600 font-semibold">{classSummary.values[i]}%</span>
             </div>
-            {individualReport.length > 0 ? (
-              <div className="space-y-6">
-                {individualReport.map(a => (
-                  <div key={a.id} className="border rounded-xl p-6 bg-white shadow-sm flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                    <div>
-                      <div className="font-bold text-blue-700 text-lg mb-1">Etapa {a.stage} <span className="text-xs text-gray-500">({a.module_id === 'lectoescritura' ? 'Lenguaje' : 'Matemática'})</span></div>
-                      <div className="text-sm text-gray-600 mb-2">Fecha: <span className="font-medium">{new Date(a.created_at).toLocaleDateString('es-ES')}</span></div>
-                      <div className="flex flex-wrap gap-2 mb-2">
-                        {Object.entries(a.indicators).map(([k, v]) => (
-                          <span key={k} className={`px-2 py-1 rounded text-xs font-semibold ${
-                            v === 'SA' ? 'bg-green-100 text-green-700' :
-                            v === 'AP' ? 'bg-red-100 text-red-700' :
-                            'bg-gray-100 text-gray-700'
-                          }`}>
-                            {k.replace(/_/g, ' ')}: {v === 'SA' ? 'Autónomo' : v === 'AP' ? 'Con Apoyo' : 'No Logrado'}
-                          </span>
-                        ))}
-                      </div>
-                      <div className="text-sm text-gray-700"><span className="font-semibold">Notas:</span> {a.notes || 'Sin notas'}</div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-gray-500">Selecciona un estudiante para ver su progreso.</div>
-            )}
-            <button className="bg-blue-600 text-white px-3 py-1 rounded-lg hover:bg-blue-700 transition-colors duration-200 mt-4 text-sm" onClick={handleExportPDF} disabled={!selectedStudentId}>
-              Exportar PDF
-            </button>
+          ))}
         </div>
+        <div className="mt-3"><Legend /></div>
+      </section>
 
-        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition-shadow duration-200">
-          <div className="h-12 w-12 bg-green-100 rounded-lg flex items-center justify-center mb-4">
-            <Calendar className="h-6 w-6 text-green-600" />
-          </div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">
-              Reporte Resumen de la Clase
-            </h3>
-            <p className="text-gray-600 text-sm mb-4">
-              Resumen del desempeño de la clase y tendencias de progreso a lo largo del tiempo
-            </p>
-            <div className="mt-6 p-6 bg-white rounded-xl shadow-sm border">
-              <BarChart
-                labels={classSummary.labels}
-                values={classSummary.values}
-                title="Resumen de la Clase (Porcentaje de estudiantes)"
-              />
-              <div className="mt-4 text-sm text-gray-700">
-                <ul className="list-disc ml-6">
-                  <li><span className="font-semibold text-green-700">Autónomos:</span> Estudiantes que lograron más del 60% de indicadores de forma autónoma.</li>
-                  <li><span className="font-semibold text-red-700">Con Apoyo:</span> Estudiantes que requieren apoyo en más del 50% de los indicadores.</li>
-                  <li><span className="font-semibold text-gray-700">No Logrado:</span> Estudiantes que no alcanzan los criterios anteriores.</li>
-                </ul>
-              </div>
-            </div>
-        </div>
-      </div>
-
-      {/* Coming Soon Placeholder */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-12">
-        <div className="text-center">
-          <div className="h-16 w-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <BarChart3 className="h-8 w-8 text-gray-400" />
-          </div>
-          <h3 className="text-lg font-medium text-gray-900 mb-2">
-            Analíticas Avanzadas Próximamente
-          </h3>
-          <p className="text-gray-600 max-w-md mx-auto">
-            Gráficos completos, seguimiento de progreso y analíticas detalladas estarán disponibles una vez que comiences a crear evaluaciones.
-          </p>
-        </div>
-      </div>
+      {/* Modal PDF */}
+      {showPdfModal && (
+        <Suspense fallback={<div className="fixed inset-0 flex items-center justify-center bg-black/30"><LoadingSpinner label="Cargando modal" /></div>}>
+          <PdfPreviewModal
+            isOpen={showPdfModal}
+            onClose={closePdfModal}
+            stages={pdfStages}
+            toggleStage={toggleStage}
+            assessments={assessments}
+            selectedIds={pdfSelectedIds}
+            toggleEval={toggleEval}
+            download={downloadFromPreview}
+            pdfPreviewRef={pdfPreviewRef}
+          />
+        </Suspense>
+      )}
     </div>
   );
-}
+};
 
 export default Reports;
