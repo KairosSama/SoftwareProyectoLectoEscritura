@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Dialog } from '@headlessui/react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
@@ -13,22 +13,35 @@ function Profile() {
   });
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleting, setDeleting] = useState(false);
-  // Eliminar cuenta de usuario y todos sus datos asociados
+  // Eliminar cuenta vía endpoint seguro (serverless) que usa la service key
   const handleDeleteAccount = async () => {
+    if (!user) return;
     setDeleting(true);
-    // Elimina el usuario de Supabase Auth
-    const { error } = await supabase.auth.admin.deleteUser(user.id);
-    if (error) {
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData?.session?.access_token;
+      if (!token) throw new Error('No se pudo obtener la sesión actual');
+      const res = await fetch('/api/delete-account', {
+        method: 'POST',
+        headers: {
+          'Authorization': 'Bearer ' + token,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ hard: true })
+      });
+      if (!res.ok) {
+        const detail = await res.json().catch(() => ({}));
+        throw new Error(detail.error || 'Fallo al eliminar la cuenta');
+      }
+      setShowDeleteModal(false);
+      alert('Tu cuenta y todos tus datos han sido eliminados.');
+      await supabase.auth.signOut();
+      window.location.href = '/';
+    } catch (e: any) {
+      alert('Error al eliminar la cuenta: ' + (e.message || 'desconocido'));
+    } finally {
       setDeleting(false);
-      alert('Error al eliminar la cuenta: ' + error.message);
-      return;
     }
-    // Aquí podrías agregar lógica adicional para eliminar datos relacionados si es necesario
-    setDeleting(false);
-    setShowDeleteModal(false);
-    alert('Tu cuenta y todos tus datos han sido eliminados.');
-    // Redirigir al usuario fuera de la app
-    window.location.href = '/';
   };
 
   const handleSave = async () => {
