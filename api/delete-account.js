@@ -26,7 +26,13 @@ export default async function handler(req, res) {
   if (!adminClient) {
     return res.status(500).json({
       error: 'Servicio no configurado',
-      hint: 'Define SUPABASE_URL y SUPABASE_SERVICE_KEY en Vercel (Project Settings > Environment Variables). No expongas la service key en el cliente.'
+      hint: 'Define SUPABASE_URL y SUPABASE_SERVICE_KEY en Vercel (Project Settings > Environment Variables). No expongas la service key en el cliente.',
+      debug: {
+        hasSUPABASE_URL: !!process.env.SUPABASE_URL,
+        hasVITE_SUPABASE_URL: !!process.env.VITE_SUPABASE_URL,
+        hasSERVICE_KEY: !!process.env.SUPABASE_SERVICE_KEY,
+        hasSERVICE_ROLE_KEY: !!process.env.SUPABASE_SERVICE_ROLE_KEY
+      }
     });
   }
   try {
