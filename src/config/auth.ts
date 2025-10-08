@@ -38,3 +38,12 @@ export function assessPasswordStrength(pwd: string) {
   else label = 'Muy débil';
   return { score, label, tests };
 }
+
+// Texto explicativo (tooltip) de cada requisito de contraseña
+export const PASSWORD_REQUIREMENT_TOOLTIPS: Record<string,string> = {
+  length: 'Mayor longitud amplía el espacio de búsqueda y dificulta ataques de fuerza bruta.',
+  upper: 'Las mayúsculas reducen patrones triviales y elevan la entropía.',
+  lower: 'Las minúsculas aseguran diversidad básica de caracteres.',
+  number: 'Los números agregan variabilidad frente a diccionarios de sólo letras.',
+  symbol: 'Los símbolos expanden el alfabeto y elevan significativamente la entropía.',
+};
