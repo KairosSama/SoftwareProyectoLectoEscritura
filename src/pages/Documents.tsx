@@ -12,7 +12,9 @@ import {
   Save
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-import { getFromStorage, saveToStorage } from '../lib/mockData';
+// Eliminamos persistencia en localStorage para documentos personales y los movemos a Supabase Storage + tabla
+// (student_documents). Si más adelante se añade una tabla específica user_documents se puede ajustar aquí.
+// import { getFromStorage, saveToStorage } from '../lib/mockData';
 
 
 type DocType = 'pdf' | 'txt' | 'image' | 'note' | 'other';
@@ -28,7 +30,7 @@ type StoredDoc = {
   text?: string;
   mime?: string;
   readonly?: boolean;
-  category?: 'lectoescritura' | 'matematicas'; // <- para secciones
+  category?: 'lectoescritura' | 'matematicas'; // Secciones
 };
 
 
@@ -56,28 +58,33 @@ function detectType(mime = '', fallbackName = ''): DocType {
 
 
 // Obtiene archivos de Supabase Storage agrupados por categoría
+interface SupabaseListedFile { name: string; id?: string; updated_at?: string; created_at?: string; metadata?: { size?: number; mimetype?: string }; }
 async function fetchSupabaseDocs(category: 'lectoescritura' | 'matematicas') {
   const { data } = await supabase.storage.from('global-docs').list(category + '/', { limit: 100, offset: 0 });
-  // Filtra solo archivos (no carpetas)
-  return (data || []).filter(f => f.name && !f.name.endsWith('/')).map(f => ({
-    name: f.name,
-    path: `${category}/${f.name}`,
-    type: detectType(f.metadata?.mimetype, f.name),
-    size: f.metadata?.size || 0,
-    updated_at: f.updated_at || new Date().toISOString(),
-    category,
-    mime: f.metadata?.mimetype,
-  }));
+  return (data || [])
+    .filter((f: SupabaseListedFile) => f.name && !f.name.endsWith('/'))
+    .map((f: SupabaseListedFile) => ({
+      name: f.name,
+      path: `${category}/${f.name}`,
+      type: detectType(f.metadata?.mimetype, f.name),
+      size: f.metadata?.size || 0,
+      updated_at: f.updated_at || new Date().toISOString(),
+      category,
+      mime: f.metadata?.mimetype,
+    }));
 }
 
 
 
 export default function Documents() {
   const { user } = useAuth();
-  const USER_KEY = userKeyFor(user?.email);
+  // const USER_KEY = userKeyFor(user?.email);
 
   const [globalDocs, setGlobalDocs] = useState<StoredDoc[]>([]);
-  const [userDocs, setUserDocs] = useState<StoredDoc[]>([]);
+  const [userDocs, setUserDocs] = useState<StoredDoc[]>([]); // ahora viene de Supabase
+  const [loadingUserDocs, setLoadingUserDocs] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState('');
 
   const [previewDoc, setPreviewDoc] = useState<StoredDoc | null>(null);
@@ -102,13 +109,13 @@ export default function Documents() {
       // Asignar id y readonly
       const now = new Date().toISOString();
       const docs = [
-        ...lecto.map(d => ({
+        ...lecto.map((d: any) => ({
           ...d,
           id: `${d.category}-${d.name}`,
           created_at: d.updated_at || now,
           readonly: true,
         })),
-        ...mate.map(d => ({
+  ...mate.map((d: any) => ({
           ...d,
           id: `${d.category}-${d.name}`,
           created_at: d.updated_at || now,
@@ -116,19 +123,106 @@ export default function Documents() {
         })),
       ];
       setGlobalDocs(docs);
+      // Debug para pruebas: confirmar carga
+      // eslint-disable-next-line no-console
+      console.log('[Documents] Global docs cargados:', docs.map(d => d.name));
     }
     loadGlobalDocs();
   }, []);
 
+  // Cargar documentos personales desde Supabase Storage + tabla student_documents.
   useEffect(() => {
-    const u = (getFromStorage(USER_KEY) || []) as StoredDoc[];
-    setUserDocs(u);
-  }, [USER_KEY]);
+    if (!user) return;
+    async function loadUserDocs() {
+      setLoadingUserDocs(true);
+      setError(null);
+      try {
+        // 1. Obtener filas de la tabla (para garantizar que sólo mostramos lo registrado).
+        const { data: rows, error: dbErr } = await supabase
+          .from('student_documents')
+          .select('id, file_url, uploaded_at')
+          .eq('created_by', user.id)
+          .order('uploaded_at', { ascending: false });
+        if (dbErr) throw dbErr;
+  const fileSet = new Set((rows || []).map((r: any) => r.file_url as string));
+        // 2. Listar objetos en el bucket user_docs bajo el prefijo user.id/
+        const { data: storageList, error: listErr } = await supabase.storage
+          .from('user_docs')
+          .list(user.id + '/', { limit: 200 });
+        if (listErr) throw listErr;
+        const now = new Date().toISOString();
+        const docs: StoredDoc[] = [];
+  (storageList || []).forEach((f: any) => {
+          if (!f.name || f.name.endsWith('/')) return;
+            const fullPath = `${user.id}/${f.name}`;
+            if (!fileSet.has(fullPath)) {
+              // Objeto huérfano (aún no registrado en tabla) – opcionalmente podríamos insertar una fila aquí.
+              return;
+            }
+            // Extraer nombre original tras el primer '_' (formato timestamp_originalName.ext)
+            const original = f.name.includes('_') ? f.name.substring(f.name.indexOf('_') + 1) : f.name;
+            docs.push({
+              id: fullPath, // usamos path como id local (id real está en la tabla si se necesitara otra consulta)
+              name: original,
+              type: detectType(f.metadata?.mimetype, original),
+              size: f.metadata?.size || 0,
+              created_at: f.updated_at || now,
+              updated_at: f.updated_at || now,
+              mime: f.metadata?.mimetype,
+              readonly: false,
+            });
+        });
+        setUserDocs(docs);
+      } catch (e: any) {
+        setError(e.message || 'Error cargando documentos personales');
+      } finally {
+        setLoadingUserDocs(false);
+      }
+    }
+    loadUserDocs();
+  }, [user]);
 
   // ------- Persistencia -------
-  const persistUserDocs = (next: StoredDoc[]) => {
-    setUserDocs(next);
-    saveToStorage(USER_KEY, next);
+  // Ya no persistimos en local; mantenemos helper por compatibilidad si se quisiera cachear.
+  const refreshUserDocs = async () => {
+    if (!user) return;
+    setLoadingUserDocs(true);
+    try {
+      const { data: rows, error: dbErr } = await supabase
+        .from('student_documents')
+        .select('id, file_url, uploaded_at')
+        .eq('created_by', user.id)
+        .order('uploaded_at', { ascending: false });
+      if (dbErr) throw dbErr;
+  const fileSet = new Set((rows || []).map((r: any) => r.file_url as string));
+      const { data: storageList, error: listErr } = await supabase.storage
+        .from('user_docs')
+        .list(user.id + '/', { limit: 200 });
+      if (listErr) throw listErr;
+      const now = new Date().toISOString();
+      const docs: StoredDoc[] = [];
+  (storageList || []).forEach((f: any) => {
+        if (!f.name || f.name.endsWith('/')) return;
+        const fullPath = `${user.id}/${f.name}`;
+        if (!fileSet.has(fullPath)) return;
+        const original = f.name.includes('_') ? f.name.substring(f.name.indexOf('_') + 1) : f.name;
+        docs.push({
+          id: fullPath,
+          name: original,
+          type: detectType(f.metadata?.mimetype, original),
+          size: f.metadata?.size || 0,
+          created_at: f.updated_at || now,
+          updated_at: f.updated_at || now,
+          mime: f.metadata?.mimetype,
+          readonly: false,
+        });
+      });
+      setUserDocs(docs);
+    } catch (e: any) {
+      setError(e.message || 'Error refrescando documentos');
+    } finally {
+      setLoadingUserDocs(false);
+    }
   };
 
   // ------- Filtros (búsqueda por nombre) -------
@@ -185,35 +279,27 @@ export default function Documents() {
 
   // ------- Subida por input / Drag&Drop -------
   const onFilesSelected = async (files: FileList | null) => {
-    if (!files || !files.length) return;
-    const additions: StoredDoc[] = [];
-
-    for (const file of Array.from(files)) {
-      const mime = file.type;
-      const type = detectType(mime, file.name);
-      const reader = new FileReader();
-
-      const dataUrl: string = await new Promise((resolve, reject) => {
-        reader.onerror = () => reject(reader.error);
-        reader.onload = () => resolve(String(reader.result));
-        reader.readAsDataURL(file);
-      });
-
-      const now = new Date().toISOString();
-      additions.push({
-        id: crypto.randomUUID(),
-        name: file.name,
-        type,
-        size: file.size,
-        created_at: now,
-        updated_at: now,
-        dataUrl,
-        mime
-      });
-    }
-
-    if (additions.length) {
-      persistUserDocs([...userDocs, ...additions]);
+    if (!files || !files.length || !user) return;
+    setUploading(true);
+    setError(null);
+    try {
+      for (const file of Array.from(files)) {
+        const path = `${user.id}/${Date.now()}_${file.name}`;
+        const { error: upErr } = await supabase.storage.from('user_docs').upload(path, file);
+        if (upErr) throw upErr;
+        // Registrar en la tabla (student_documents reutilizada; si hay columna student_id se puede dejar null)
+        const { error: insErr } = await supabase.from('student_documents').insert({
+          student_id: null,
+          file_url: path,
+          created_by: user.id
+        });
+        if (insErr) throw insErr;
+      }
+      await refreshUserDocs();
+    } catch (e: any) {
+      setError(e.message || 'Error subiendo archivos');
+    } finally {
+      setUploading(false);
     }
   };
 
@@ -260,17 +346,26 @@ export default function Documents() {
   };
 
   // ------- Acciones personales -------
-  const handleDeleteUser = (id: string) => {
-    const next = userDocs.filter(d => d.id !== id);
-    persistUserDocs(next);
-    if (previewDoc?.id === id) setPreviewDoc(null);
+  const handleDeleteUser = async (id: string) => {
+    if (!user) return;
+    setError(null);
+    // id es el path completo
+    try {
+      const path = id; // ya path
+      // Borrar objeto storage
+      await supabase.storage.from('user_docs').remove([path]);
+      // Borrar fila (si la id real fuera distinta necesitaríamos mapear; aquí usamos file_url como referencia)
+      await supabase.from('student_documents').delete().eq('file_url', path).eq('created_by', user.id);
+      await refreshUserDocs();
+      if (previewDoc?.id === id) setPreviewDoc(null);
+    } catch (e: any) {
+      setError(e.message || 'Error eliminando documento');
+    }
   };
 
-  const saveRename = (id: string) => {
-    const name = tempName.trim();
-    if (!name) return;
-    const next = userDocs.map(d => (d.id === id ? { ...d, name, updated_at: new Date().toISOString() } : d));
-    persistUserDocs(next);
+  const saveRename = (_id: string) => {
+    // Renombrar requeriría copy+delete en Storage y actualizar la fila; por ahora se omite.
+    alert('Renombrar no está soportado aún para documentos remotos.');
     setIsEditingNameId(null);
     setTempName('');
   };
@@ -372,13 +467,8 @@ export default function Documents() {
 
   // ------- Colgroup consistente para todas las tablas -------
   const ColGroup = () => (
-    <colgroup>
-      <col style={{ width: '50%' }} />  {/* Nombre */}
-      <col style={{ width: '12%' }} />  {/* Tipo */}
-      <col style={{ width: '12%' }} />  {/* Tamaño */}
-      <col style={{ width: '16%' }} />  {/* Actualizado */}
-      <col style={{ width: '10%' }} />  {/* Acciones */}
-    </colgroup>
+    // Eliminamos nodos de texto/espacios dentro de <colgroup> para evitar el warning de React en tests
+    <colgroup><col style={{ width: '50%' }} /><col style={{ width: '12%' }} /><col style={{ width: '12%' }} /><col style={{ width: '16%' }} /><col style={{ width: '10%' }} /></colgroup>
   );
 
   // ------- Tabla reutilizable (para globales por categoría) -------
@@ -475,13 +565,14 @@ export default function Documents() {
             onChange={(e) => onFilesSelected(e.target.files)}
           />
           <button
-            className="inline-flex items-center gap-2 px-3 py-2 rounded-md border hover:bg-gray-50"
+            className="inline-flex items-center gap-2 px-3 py-2 rounded-md border hover:bg-gray-50 disabled:opacity-50"
             onClick={openFilePicker}
             title="Subir archivos (Shift+click para subir una carpeta)"
             type="button"
+            disabled={uploading}
           >
             <UploadCloud className="h-4 w-4" />
-            Subir
+            {uploading ? 'Subiendo…' : 'Subir'}
           </button>
         </div>
       </div>
@@ -493,7 +584,9 @@ export default function Documents() {
           dragOver ? 'border-blue-400 bg-blue-50' : 'border-gray-300 bg-white'
         }`}
       >
-        Arrastra y suelta PDF, TXT o imágenes aquí para subirlos a <b>Mis documentos</b>.
+        Arrastra y suelta PDF, TXT o imágenes aquí para subirlos a <b>Mis documentos</b> (se guardarán en la nube y sólo tú podrás verlos).
+        {error && <div className="mt-2 text-sm text-red-600">{error}</div>}
+        {loadingUserDocs && <div className="mt-2 text-sm text-gray-500">Cargando tus documentos…</div>}
       </div>
 
       {/* Sección 1: Documentos (globales) con dos subsecciones */}
@@ -575,16 +668,6 @@ export default function Documents() {
                       ) : (
                         <div className="flex items-center gap-2">
                           <span className="font-medium text-gray-900">{d.name}</span>
-                          <button
-                            className="p-1 rounded hover:bg-gray-100"
-                            title="Renombrar"
-                            onClick={() => {
-                              setIsEditingNameId(d.id);
-                              setTempName(d.name);
-                            }}
-                          >
-                            <Edit3 className="h-4 w-4 text-gray-600" />
-                          </button>
                         </div>
                       )}
                     </td>
@@ -611,6 +694,7 @@ export default function Documents() {
                           className="p-2 rounded hover:bg-gray-100"
                           title="Eliminar"
                           onClick={() => handleDeleteUser(d.id)}
+                          disabled={uploading}
                         >
                           <Trash2 className="h-4 w-4 text-red-600" />
                         </button>
@@ -621,7 +705,7 @@ export default function Documents() {
               </tbody>
             </table>
           ) : (
-            <div className="p-4 text-sm text-gray-600">No has subido documentos personales aún.</div>
+            <div className="p-4 text-sm text-gray-600">{loadingUserDocs ? 'Cargando…' : 'No has subido documentos personales aún.'}</div>
           )}
         </div>
       </section>
