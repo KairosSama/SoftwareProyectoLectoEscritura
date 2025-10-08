@@ -32,9 +32,10 @@ export default function EmailConfirmCallback() {
           setMessage('El enlace ha expirado o ya fue usado.');
           return;
         }
-        setState('success');
-        setMessage('Correo confirmado correctamente. Redirigiendo…');
-        setTimeout(() => navigate('/dashboard'), 1500);
+  setState('success');
+  setMessage('Correo confirmado correctamente. Redirigiendo…');
+  try { sessionStorage.removeItem('pending_signup_email'); } catch {}
+  setTimeout(() => navigate('/dashboard'), 1500);
       } catch (e: any) {
         setState('error');
         setMessage(e.message || 'No se pudo confirmar el correo.');

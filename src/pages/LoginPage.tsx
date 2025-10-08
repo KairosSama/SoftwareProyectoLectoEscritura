@@ -35,7 +35,17 @@ function LoginPage() {
         }
       }
     } catch (err: any) {
-      setError(err.message || 'An error occurred');
+      const msg = err.message || 'Ha ocurrido un error';
+      // Supabase error cuando email no confirmado puede contener 'Email not confirmed'
+      if (/not.*confirm/i.test(msg) || /email.*confirm/i.test(msg)) {
+        try { 
+          sessionStorage.setItem('pending_signup_email', formData.email); 
+          sessionStorage.setItem('pending_from_login', '1');
+        } catch {}
+        navigate('/auth/pending');
+        return;
+      }
+      setError(msg);
     } finally {
       setLoading(false);
     }

@@ -8,12 +8,16 @@ export default function PendingEmailConfirmation() {
   const { resendConfirmation } = useAuth();
   const [email, setEmail] = useState('');
   const [statusMsg, setStatusMsg] = useState('');
+  const [fromLoginAttempt, setFromLoginAttempt] = useState(false);
   const [resending, setResending] = useState(false);
 
   useEffect(() => {
     try {
       const stored = sessionStorage.getItem('pending_signup_email');
       if (stored) setEmail(stored);
+      const flag = sessionStorage.getItem('pending_from_login');
+      if (flag) setFromLoginAttempt(true);
+      sessionStorage.removeItem('pending_from_login');
     } catch {}
   }, []);
 
@@ -42,6 +46,11 @@ export default function PendingEmailConfirmation() {
           Hemos enviado un enlace de verificación a: <span className="font-medium">{email || '—'}</span>.
           Abre tu correo y haz clic en el enlace para activar tu cuenta. Este enlace expira en pocos minutos.
         </p>
+        {fromLoginAttempt && (
+          <div className="text-xs text-amber-600 bg-amber-50 border border-amber-200 px-3 py-2 rounded">
+            Intentaste iniciar sesión pero tu correo aún no estaba confirmado. Revisa tu bandeja y confirma para continuar.
+          </div>
+        )}
         <div className="space-y-2 text-xs text-gray-500">
           <p>Si no encuentras el correo revisa la carpeta de spam.</p>
           <p>Una vez confirmado, serás redirigido automáticamente cuando ingreses de nuevo.</p>
