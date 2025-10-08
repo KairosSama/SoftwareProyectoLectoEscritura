@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
+import { EMAIL_CONFIRM_CALLBACK, PASSWORD_RESET_CALLBACK } from '../config/auth';
 // TODO: Migrar funciones de autenticación a Supabase
 
 interface AuthContextType {
@@ -54,7 +55,7 @@ export function AuthProvider({ children, skipInitialSession }: { children: React
   };
 
   const signUp = async (email: string, password: string, fullName: string, role: string) => {
-    const redirectTo = `${window.location.origin}/auth/confirm`;
+  const redirectTo = EMAIL_CONFIRM_CALLBACK;
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
@@ -91,7 +92,7 @@ export function AuthProvider({ children, skipInitialSession }: { children: React
   };
 
   const requestPasswordReset = async (email: string) => {
-    const redirectTo = `${window.location.origin}/auth/password-reset`;
+  const redirectTo = PASSWORD_RESET_CALLBACK;
     await supabase.auth.resetPasswordForEmail(email, { redirectTo });
   };
 
