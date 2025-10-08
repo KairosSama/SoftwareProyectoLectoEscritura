@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { createStudent, updateStudent } from '../../lib/mockData';
 import { X } from 'lucide-react';
+import { filterDiagnoses } from '../../lib/diagnoses';
 
 interface StudentModalProps {
   isOpen: boolean;
@@ -18,6 +19,30 @@ function StudentModal({ isOpen, onClose, onSuccess, student }: StudentModalProps
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [diagQuery, setDiagQuery] = useState('');
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [showSug, setShowSug] = useState(false);
+  const suggestionsRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setDiagQuery(formData.diagnosis);
+  }, [formData.diagnosis]);
+
+  useEffect(() => {
+    const list = filterDiagnoses(diagQuery);
+    setSuggestions(list);
+  }, [diagQuery]);
+
+  useEffect(() => {
+    function onClickOutside(e: MouseEvent) {
+      if (!suggestionsRef.current) return;
+      if (!suggestionsRef.current.contains(e.target as Node)) {
+        setShowSug(false);
+      }
+    }
+    document.addEventListener('mousedown', onClickOutside);
+    return () => document.removeEventListener('mousedown', onClickOutside);
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -84,7 +109,7 @@ function StudentModal({ isOpen, onClose, onSuccess, student }: StudentModalProps
             />
           </div>
 
-          <div>
+          <div className="relative" ref={suggestionsRef}>
             <label htmlFor="diagnosis" className="block text-sm font-medium text-gray-700 mb-1">
               Diagnóstico *
             </label>
@@ -93,10 +118,34 @@ function StudentModal({ isOpen, onClose, onSuccess, student }: StudentModalProps
               id="diagnosis"
               required
               value={formData.diagnosis}
-              onChange={(e) => setFormData({ ...formData, diagnosis: e.target.value })}
+              onFocus={() => setShowSug(true)}
+              onChange={(e) => {
+                const val = e.target.value;
+                setFormData({ ...formData, diagnosis: val });
+                setDiagQuery(val);
+                setShowSug(true);
+              }}
               placeholder="Ej: Trastorno del Espectro Autista, TDAH, Dificultad de Aprendizaje"
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              autoComplete="off"
             />
+            {showSug && suggestions.length > 0 && (
+              <div className="absolute z-10 mt-1 w-full bg-white border border-gray-200 rounded-md shadow-lg max-h-56 overflow-auto text-sm" role="listbox">
+                {suggestions.map(s => (
+                  <button
+                    type="button"
+                    key={s}
+                    onClick={() => {
+                      setFormData({ ...formData, diagnosis: s });
+                      setShowSug(false);
+                    }}
+                    className="block w-full text-left px-3 py-2 hover:bg-blue-50 focus:bg-blue-50 focus:outline-none"
+                  >
+                    {s}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           <div>
