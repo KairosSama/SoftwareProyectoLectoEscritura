@@ -330,10 +330,26 @@ export default function Documents() {
         return;
       }
     }
-    // Documentos personales (locales)
-    if (doc.dataUrl) {
+    // Documentos personales en Storage (nueva lógica): generar URL firmada
+    if (!doc.readonly) {
+      // Si teníamos todavía dataUrl (caso legacy) lo usamos, sino signed URL
+      if (doc.dataUrl) {
+        const a = document.createElement('a');
+        a.href = doc.dataUrl;
+        a.download = doc.name || 'document';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        return;
+      }
+      // id contiene path completo userId/archivo
+      const { data, error: urlErr } = await supabase.storage.from('user_docs').createSignedUrl(doc.id, 60);
+      if (urlErr || !data?.signedUrl) {
+        alert('No se pudo generar enlace de descarga del documento personal.');
+        return;
+      }
       const a = document.createElement('a');
-      a.href = doc.dataUrl;
+      a.href = data.signedUrl;
       a.download = doc.name || 'document';
       document.body.appendChild(a);
       a.click();
@@ -748,13 +764,15 @@ export default function Documents() {
                 </div>
 
                 <div className="border rounded-md overflow-hidden" style={{ height: '70vh' }}>
-                  {/* Vista previa para documentos institucionales: solo PDF */}
+                  {/* PDF institucional */}
                   {previewDoc.type === 'pdf' && previewDoc.readonly && previewDoc.category && previewDoc.name && (
                     <SupabasePdfPreview doc={previewDoc} />
                   )}
-                  {previewDoc.type === 'pdf' && previewDoc.dataUrl && !previewDoc.readonly && (
-                    <iframe title="PDF" src={previewDoc.dataUrl} className="w-full h-full" />
+                  {/* PDF o imagen personal almacenada en bucket (sin dataUrl legacy) */}
+                  {((previewDoc.type === 'pdf') || (previewDoc.type === 'image')) && !previewDoc.readonly && (
+                    <UserStoragePreview doc={previewDoc} />
                   )}
+                  {/* Legacy local (dataUrl) imagen */}
                   {previewDoc.type === 'image' && previewDoc.dataUrl && (
                     <div className="w-full h-full flex items-center justify-center bg-gray-50">
                       <img src={previewDoc.dataUrl} alt={previewDoc.name} className="max-w-full max-h-full" />
@@ -811,5 +829,29 @@ function SupabasePdfPreview({ doc }: { doc: StoredDoc }) {
   }, [doc]);
   if (!url) return <div className="p-4 text-gray-500">Cargando vista previa…</div>;
   return <iframe title="PDF" src={url} className="w-full h-full" />;
+}
+
+// Vista previa para documentos personales almacenados en user_docs (PDF o imagen)
+function UserStoragePreview({ doc }: { doc: StoredDoc }) {
+  const [url, setUrl] = useState<string | null>(null);
+  const isPdf = doc.type === 'pdf';
+  const isImage = doc.type === 'image';
+  useEffect(() => {
+    let mounted = true;
+    async function getUrl() {
+      const { data, error } = await supabase.storage.from('user_docs').createSignedUrl(doc.id, 60);
+      if (mounted) setUrl(error ? null : data?.signedUrl || null);
+    }
+    getUrl();
+    return () => { mounted = false; };
+  }, [doc.id]);
+  if (!url) return <div className="p-4 text-gray-500">Cargando vista previa…</div>;
+  if (isPdf) return <iframe title="PDF" src={url} className="w-full h-full" />;
+  if (isImage) return (
+    <div className="w-full h-full flex items-center justify-center bg-gray-50">
+      <img src={url} alt={doc.name} className="max-w-full max-h-full" />
+    </div>
+  );
+  return <div className="p-4 text-sm text-gray-600">Vista previa no disponible.</div>;
 }
 
