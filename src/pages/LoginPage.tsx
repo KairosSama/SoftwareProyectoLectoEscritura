@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { GraduationCap, Eye, EyeOff, ShieldCheck, AlertCircle } from 'lucide-react';
 import { assessPasswordStrength, PASSWORD_POLICY, PASSWORD_REQUIREMENT_TOOLTIPS } from '../config/auth';
@@ -244,7 +244,7 @@ function LoginPage() {
             {!isLogin && (
               <div className="flex items-start gap-2 pt-2">
                 <input id="terms" type="checkbox" checked={acceptTerms} onChange={(e)=>setAcceptTerms(e.target.checked)} className="mt-1" />
-                <label htmlFor="terms" className="text-xs text-gray-600">Acepto los <a href="#" className="text-blue-600 underline">Términos y Condiciones</a> y la <a href="#" className="text-blue-600 underline">Política de Privacidad</a>.</label>
+                <label htmlFor="terms" className="text-xs text-gray-600">Acepto los <Link to="/legal/terms" className="text-blue-600 underline">Términos y Condiciones</Link> y la <Link to="/legal/privacy" className="text-blue-600 underline">Política de Privacidad</Link>.</label>
               </div>
             )}
           </div>
