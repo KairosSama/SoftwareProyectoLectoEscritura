@@ -4,14 +4,18 @@
 
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = process.env.SUPABASE_URL; // misma URL que VITE_SUPABASE_URL pero SIN exponerla en cliente
-const serviceKey = process.env.SUPABASE_SERVICE_KEY; // service_role key
+// Aceptamos varios nombres de variables para evitar configuración incompleta.
+const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
+const serviceKey = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-if (!supabaseUrl || !serviceKey) {
-  console.warn('[delete-account] Falta SUPABASE_URL o SUPABASE_SERVICE_KEY');
+if (!supabaseUrl) {
+  console.warn('[delete-account] Falta SUPABASE_URL (o VITE_SUPABASE_URL) en variables de entorno del servidor.');
+}
+if (!serviceKey) {
+  console.warn('[delete-account] Falta SUPABASE_SERVICE_KEY (service_role key) en variables de entorno del servidor.');
 }
 
-const adminClient = supabaseUrl && serviceKey
+const adminClient = (supabaseUrl && serviceKey)
   ? createClient(supabaseUrl, serviceKey, { auth: { autoRefreshToken: false, persistSession: false } })
   : null;
 
@@ -20,17 +24,20 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
   if (!adminClient) {
-    return res.status(500).json({ error: 'Servicio no configurado' });
+    return res.status(500).json({
+      error: 'Servicio no configurado',
+      hint: 'Define SUPABASE_URL y SUPABASE_SERVICE_KEY en Vercel (Project Settings > Environment Variables). No expongas la service key en el cliente.'
+    });
   }
   try {
     const authHeader = req.headers.authorization || '';
     const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
-    if (!token) return res.status(401).json({ error: 'Token ausente' });
+  if (!token) return res.status(401).json({ error: 'Token ausente', hint: 'Incluye Authorization: Bearer <access_token>' });
 
     // Validar token para obtener el user id
     const { data: { user }, error: getErr } = await adminClient.auth.getUser(token);
     if (getErr || !user) {
-      return res.status(401).json({ error: 'Token inválido' });
+  return res.status(401).json({ error: 'Token inválido' });
     }
     const userId = user.id;
 
