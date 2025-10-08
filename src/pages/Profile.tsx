@@ -6,6 +6,7 @@ import { User, Mail, Shield, Edit2, Save, X } from 'lucide-react';
 
 function Profile() {
   const { user } = useAuth();
+  const { updatePassword } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({
     fullName: user?.fullName || '',
@@ -13,6 +14,11 @@ function Profile() {
   });
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [showPwdModal, setShowPwdModal] = useState(false);
+  const [pwd1, setPwd1] = useState('');
+  const [pwd2, setPwd2] = useState('');
+  const [pwdErr, setPwdErr] = useState('');
+  const [pwdSaving, setPwdSaving] = useState(false);
   // Eliminar cuenta vía endpoint seguro (serverless) que usa la service key
   const handleDeleteAccount = async () => {
     if (!user) return;
@@ -193,6 +199,47 @@ function Profile() {
           </div>
         </div>
       </div>
+
+      {/* Modal cambio de contraseña */}
+      {showPwdModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/40" onClick={()=>!pwdSaving && setShowPwdModal(false)} />
+          <div className="relative bg-white w-full max-w-md rounded-lg shadow-lg p-6 space-y-4">
+            <h3 className="text-lg font-semibold text-gray-900">Cambiar contraseña</h3>
+            {pwdErr && <div className="text-sm text-red-600">{pwdErr}</div>}
+            <div className="space-y-3">
+              <div>
+                <label className="block text-sm font-medium mb-1">Nueva contraseña</label>
+                <input type="password" value={pwd1} onChange={e=>setPwd1(e.target.value)} className="w-full border rounded px-3 py-2" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Confirmar contraseña</label>
+                <input type="password" value={pwd2} onChange={e=>setPwd2(e.target.value)} className="w-full border rounded px-3 py-2" />
+              </div>
+            </div>
+            <div className="flex justify-end gap-3 pt-2">
+              <button disabled={pwdSaving} className="px-4 py-2 text-sm rounded border" onClick={()=> setShowPwdModal(false)}>Cancelar</button>
+              <button
+                disabled={pwdSaving}
+                className="px-4 py-2 text-sm rounded bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50"
+                onClick={async ()=>{
+                  if (pwd1.length < 8) { setPwdErr('Min 8 caracteres'); return; }
+                  if (pwd1 !== pwd2) { setPwdErr('No coinciden'); return; }
+                  setPwdErr('');
+                  setPwdSaving(true);
+                  try {
+                    await updatePassword(pwd1);
+                    alert('Contraseña actualizada');
+                    setShowPwdModal(false);
+                    setPwd1(''); setPwd2('');
+                  } catch(e:any){ setPwdErr(e.message || 'Error'); }
+                  finally{ setPwdSaving(false);} 
+                }}
+              >{pwdSaving ? 'Guardando…' : 'Guardar'}</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Danger Zone */}
       <div className="bg-white rounded-lg shadow-sm border border-red-200 p-6">

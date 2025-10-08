@@ -9,7 +9,8 @@ interface AuthContextType {
   signUp: (email: string, password: string, fullName: string, role: string) => Promise<{ email: string; needsConfirmation: boolean }>;
   resendConfirmation: (email: string) => Promise<void>;
   signOut: () => Promise<void>;
-  resetPassword: (email: string) => Promise<void>;
+  requestPasswordReset: (email: string) => Promise<void>;
+  updatePassword: (newPassword: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -89,8 +90,14 @@ export function AuthProvider({ children, skipInitialSession }: { children: React
     setUser(null);
   };
 
-  const resetPassword = async (email: string) => {
-    await supabase.auth.resetPasswordForEmail(email);
+  const requestPasswordReset = async (email: string) => {
+    const redirectTo = `${window.location.origin}/auth/password-reset`;
+    await supabase.auth.resetPasswordForEmail(email, { redirectTo });
+  };
+
+  const updatePassword = async (newPassword: string) => {
+    const { error } = await supabase.auth.updateUser({ password: newPassword });
+    if (error) throw error;
   };
 
   const value = {
@@ -100,7 +107,8 @@ export function AuthProvider({ children, skipInitialSession }: { children: React
     signUp,
     resendConfirmation,
     signOut,
-    resetPassword
+    requestPasswordReset,
+    updatePassword
   };
 
   return (

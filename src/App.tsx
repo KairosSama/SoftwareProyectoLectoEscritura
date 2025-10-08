@@ -18,6 +18,7 @@ import AllAssessments from './pages/AllAssessments';
 import Documents from './pages/Documents';
 import PendingEmailConfirmation from './pages/PendingEmailConfirmation';
 import EmailConfirmCallback from './pages/EmailConfirmCallback';
+import PasswordResetCallback from './pages/PasswordResetCallback';
 
 function App() {
   return (
@@ -29,6 +30,7 @@ function App() {
               <Route path="/login" element={<LoginPage />} />
               <Route path="/auth/pending" element={<PendingEmailConfirmation />} />
               <Route path="/auth/confirm" element={<EmailConfirmCallback />} />
+              <Route path="/auth/password-reset" element={<PasswordResetCallback />} />
               <Route path="/" element={<Navigate to="/dashboard" replace />} />
               <Route
                 path="/dashboard"

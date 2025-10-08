@@ -14,7 +14,7 @@ function LoginPage() {
   });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const { signIn, signUp, resetPassword } = useAuth();
+  const { signIn, signUp, requestPasswordReset } = useAuth();
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -58,7 +58,7 @@ function LoginPage() {
     }
 
     try {
-      await resetPassword(formData.email);
+  await requestPasswordReset(formData.email);
       alert('¡Correo de restablecimiento de contraseña enviado! Revisa tu bandeja de entrada.');
     } catch (err: any) {
       setError(err.message || 'No se pudo enviar el correo de restablecimiento');
