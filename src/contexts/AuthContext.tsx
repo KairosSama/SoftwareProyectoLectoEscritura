@@ -6,7 +6,8 @@ interface AuthContextType {
   user: any | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
-  signUp: (email: string, password: string, fullName: string, role: string) => Promise<void>;
+  signUp: (email: string, password: string, fullName: string, role: string) => Promise<{ email: string; needsConfirmation: boolean }>;
+  resendConfirmation: (email: string) => Promise<void>;
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
 }
@@ -46,30 +47,50 @@ export function AuthProvider({ children, skipInitialSession }: { children: React
   }, [effectiveSkip]);
 
   const signIn = async (email: string, password: string) => {
-  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-  if (error) throw error;
-  setUser(data.user);
-  };
-
-  const signUp = async (email: string, password: string, fullName: string, role: string) => {
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: { fullName, role }
-      }
-    });
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) throw error;
     setUser(data.user);
   };
 
+  const signUp = async (email: string, password: string, fullName: string, role: string) => {
+    const redirectTo = `${window.location.origin}/auth/confirm`;
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        emailRedirectTo: redirectTo,
+        data: { fullName, role }
+      }
+    });
+    if (error) throw error;
+    // Si la instancia requiere confirmación de email, data.session será null.
+    const needsConfirmation = !data.session;
+    if (data.session?.user) {
+      setUser(data.session.user);
+    } else {
+      // Guardamos email en sessionStorage para páginas /auth/pending y /auth/confirm
+      try { sessionStorage.setItem('pending_signup_email', email); } catch {}
+    }
+    return { email, needsConfirmation };
+  };
+
+  const resendConfirmation = async (email: string) => {
+    const redirectTo = `${window.location.origin}/auth/confirm`;
+    const { error } = await supabase.auth.resend({
+      type: 'signup',
+      email,
+      options: { emailRedirectTo: redirectTo }
+    });
+    if (error) throw error;
+  };
+
   const signOut = async () => {
-  await supabase.auth.signOut();
-  setUser(null);
+    await supabase.auth.signOut();
+    setUser(null);
   };
 
   const resetPassword = async (email: string) => {
-  await supabase.auth.resetPasswordForEmail(email);
+    await supabase.auth.resetPasswordForEmail(email);
   };
 
   const value = {
@@ -77,6 +98,7 @@ export function AuthProvider({ children, skipInitialSession }: { children: React
     loading,
     signIn,
     signUp,
+    resendConfirmation,
     signOut,
     resetPassword
   };

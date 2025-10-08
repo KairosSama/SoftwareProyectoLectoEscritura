@@ -16,6 +16,8 @@ import ProtectedRoute from './components/auth/ProtectedRoute';
 import AssessmentDetail from './pages/AssessmentDetail';
 import AllAssessments from './pages/AllAssessments';
 import Documents from './pages/Documents';
+import PendingEmailConfirmation from './pages/PendingEmailConfirmation';
+import EmailConfirmCallback from './pages/EmailConfirmCallback';
 
 function App() {
   return (
@@ -25,6 +27,8 @@ function App() {
           <div className="min-h-screen bg-gray-50">
             <Routes>
               <Route path="/login" element={<LoginPage />} />
+              <Route path="/auth/pending" element={<PendingEmailConfirmation />} />
+              <Route path="/auth/confirm" element={<EmailConfirmCallback />} />
               <Route path="/" element={<Navigate to="/dashboard" replace />} />
               <Route
                 path="/dashboard"

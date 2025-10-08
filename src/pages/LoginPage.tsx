@@ -25,10 +25,15 @@ function LoginPage() {
     try {
       if (isLogin) {
         await signIn(formData.email, formData.password);
+        navigate('/dashboard');
       } else {
-        await signUp(formData.email, formData.password, formData.fullName, formData.role);
+        const { needsConfirmation } = await signUp(formData.email, formData.password, formData.fullName, formData.role);
+        if (needsConfirmation) {
+          navigate('/auth/pending');
+        } else {
+          navigate('/dashboard');
+        }
       }
-      navigate('/dashboard');
     } catch (err: any) {
       setError(err.message || 'An error occurred');
     } finally {
