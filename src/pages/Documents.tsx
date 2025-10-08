@@ -159,8 +159,9 @@ export default function Documents() {
               // Objeto huérfano (aún no registrado en tabla) – opcionalmente podríamos insertar una fila aquí.
               return;
             }
-            // Extraer nombre original tras el primer '_' (formato timestamp_originalName.ext)
-            const original = f.name.includes('_') ? f.name.substring(f.name.indexOf('_') + 1) : f.name;
+            // Extraer nombre original tras '_' (formato timestamp_originalName.ext); ya puede venir sanitizado
+            let original = f.name.includes('_') ? f.name.substring(f.name.indexOf('_') + 1) : f.name;
+            // Nada que decodificar (no usamos encodeURIComponent) pero mantenemos hook para futuro.
             docs.push({
               id: fullPath, // usamos path como id local (id real está en la tabla si se necesitara otra consulta)
               name: original,
@@ -205,7 +206,7 @@ export default function Documents() {
         if (!f.name || f.name.endsWith('/')) return;
         const fullPath = `${user.id}/${f.name}`;
         if (!fileSet.has(fullPath)) return;
-        const original = f.name.includes('_') ? f.name.substring(f.name.indexOf('_') + 1) : f.name;
+  let original = f.name.includes('_') ? f.name.substring(f.name.indexOf('_') + 1) : f.name;
         docs.push({
           id: fullPath,
           name: original,
@@ -284,7 +285,14 @@ export default function Documents() {
     setError(null);
     try {
       for (const file of Array.from(files)) {
-        const path = `${user.id}/${Date.now()}_${file.name}`;
+        // Sanitizar nombre para evitar 400 Invalid key (acentos, espacios y caracteres fuera de rango)
+        const sanitizedName = file.name
+          .normalize('NFD')
+          .replace(/\p{Diacritic}+/gu, '')
+          .replace(/[^a-zA-Z0-9._-]+/g, '_')
+          .replace(/_+/g, '_')
+          .replace(/^_+|_+$/g, '');
+        const path = `${user.id}/${Date.now()}_${sanitizedName}`;
         const { error: upErr } = await supabase.storage.from('user_docs').upload(path, file);
         if (upErr) throw upErr;
         // Registrar en la tabla (student_documents reutilizada; si hay columna student_id se puede dejar null)
