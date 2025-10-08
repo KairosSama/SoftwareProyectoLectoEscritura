@@ -50,9 +50,12 @@ export default async function handler(req, res) {
     // 1. Borrar datos dependientes (orden: evaluaciones -> estudiantes -> documentos -> lo que falte)
     // Usa transacciones lógicas (no hay transaction en serverless; se asume idempotencia).
     const tablesToClean = [
+      // Hijo primero (evaluaciones y estudiantes y documentos) para evitar FK issues
       { table: 'assessments', filter: { created_by: userId } },
       { table: 'students', filter: { created_by: userId } },
-      { table: 'student_documents', filter: { created_by: userId } }
+      { table: 'student_documents', filter: { created_by: userId } },
+      // Finalmente la tabla de usuarios de la app si existe
+      { table: 'users', filter: { id: userId } }
     ];
 
     for (const t of tablesToClean) {
