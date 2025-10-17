@@ -141,3 +141,79 @@ export function groupIndicatorsByBlock(indicators: Assessment['indicators']): Gr
 
 // Tamaño A4 en px para previsualización (~96dpi)
 export const PREVIEW_PAGE_PX = { width: 794, height: 1123 } as const;
+
+// Bloques esperados por módulo y etapa (para renderizar todas las columnas aunque falten indicadores)
+export const MODULE_STAGE_BLOCKS: Record<'lectoescritura'|'matematica', Record<number, string[]>> = {
+  lectoescritura: {
+    1: [
+      'reconocimiento_fotos',
+      'seleccion_conocidas',
+      'emparejamiento_identicas',
+      'agrupacion_criterios',
+      'secuencias_temporales',
+      'denominacion_nombramiento'
+    ],
+    2: [
+      'reconocimiento_global_sustantivos',
+      'reconocimiento_global_verbos',
+      'reconocimiento_global_adjetivos',
+      'asociacion_tarjeta_15_20',
+      'seleccion_cartel_1_entre_2',
+      'lectura_libros_personales'
+    ],
+    3: [
+      'analisis_composicion_silabica',
+      'reconocimiento_silabas_modelo',
+      'reconocimiento_silabas_sin_modelo',
+      'lectura_silabas_directas',
+      'lectura_silabas_trabadas',
+      'extension_lectura_oraciones'
+    ],
+    4: [
+      'lectura_instrucciones_simples',
+      'lectura_instrucciones_complejas',
+      'respuesta_preguntas_literales',
+      'respuesta_preguntas_inferenciales',
+      'uso_vocabulario_desconocido',
+      'uso_claves_contextuales'
+    ]
+  },
+  matematica: {
+    1: [
+      'correspondencia_uno_a_uno',
+      'clasificacion_atributos',
+      'patrones_continuacion',
+      'patrones_regularidades',
+      'creacion_patrones'
+    ],
+    2: [
+      'distincion_letras_numeros',
+      'conteo_resolucion_problemas',
+      'procedimiento_contar',
+      'cuenta_disposiciones',
+      'comparacion_colecciones',
+      'secuencia_numerica'
+    ],
+    3: [
+      'adicion_sin_reserva',
+      'sustraccion_sin_reserva',
+      'suma_multiplos_10',
+      'resolucion_problemas_aditivos',
+      'reconocimiento_operacion'
+    ],
+    4: [
+      'reconocimiento_multiplicacion',
+      'calculo_multiplicaciones',
+      'problemas_tablas_multiplicar',
+      'reconocimiento_division',
+      'resolucion_division'
+    ],
+    5: [
+      'reconocimiento_dinero',
+      'equivalencia_dinero',
+      'problemas_compra',
+      'representacion_numerica',
+      'comparacion_valores'
+    ]
+  }
+};
