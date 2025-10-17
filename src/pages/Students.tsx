@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { getStudents, Student } from '../lib/mockData';
+import { supabase } from '../lib/supabase';
 import { Plus, Search, Calendar, FileText, Eye } from 'lucide-react';
 import StudentModal from '../components/students/StudentModal';
 
@@ -16,7 +17,9 @@ function Students() {
 
   const fetchStudents = async () => {
     try {
-  const data = await getStudents();
+      // Asegura sesión cargada para evitar RLS vacío en primera carga
+      try { await supabase.auth.getSession(); } catch {}
+      const data = await getStudents();
       setStudents(data);
     } catch (error) {
       console.error('Error fetching students:', error);

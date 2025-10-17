@@ -1,7 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ClipboardList, Plus, Search, Eye } from 'lucide-react';
 import { getAssessments, getStudents, calculateProgressStatus } from '../lib/mockData';
+import { supabase } from '../lib/supabase';
 
 import { Assessment, Student } from '../lib/mockData';
 function Assessments() {
@@ -12,6 +13,7 @@ function Assessments() {
 
   useEffect(() => {
     async function fetchData() {
+      try { await supabase.auth.getSession(); } catch {}
       const a = await getAssessments();
       const s = await getStudents();
       setAssessments(a);

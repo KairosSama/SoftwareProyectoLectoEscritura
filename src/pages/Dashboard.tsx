@@ -3,10 +3,11 @@ const MODULE_NAMES: Record<string, string> = {
   lectoescritura: 'Lectoescritura',
   matematica: 'Matemática',
 };
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { getStudents, getAssessments, Student, Assessment, calculateProgressStatus } from '../lib/mockData';
+import { supabase } from '../lib/supabase';
 import { Users, ClipboardList, BarChart3, TrendingUp, Plus } from 'lucide-react';
 
 interface DashboardStats {
@@ -34,8 +35,9 @@ function Dashboard() {
 
   const fetchDashboardData = async () => {
     try {
-  const students = await getStudents();
-  const assessments = await getAssessments();
+      try { await supabase.auth.getSession(); } catch {}
+      const students = await getStudents();
+      const assessments = await getAssessments();
       // Aseguramos orden: más recientes primero
       const assessmentsSorted = assessments
         .slice()

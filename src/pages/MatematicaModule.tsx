@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Calculator, Plus, Search, Eye } from 'lucide-react';
 import { getAssessments, getStudents, calculateProgressStatus, Assessment, Student } from '../lib/mockData';
+import { supabase } from '../lib/supabase';
 
 function MatematicaModule() {
   const [assessments, setAssessments] = useState<Assessment[]>([]);
@@ -11,6 +12,7 @@ function MatematicaModule() {
 
   useEffect(() => {
     async function fetchData() {
+      try { await supabase.auth.getSession(); } catch {}
       const a = await getAssessments();
       const s = await getStudents();
       setAssessments(a);
