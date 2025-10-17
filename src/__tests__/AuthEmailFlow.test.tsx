@@ -32,7 +32,10 @@ describe('Flujo de email (signup -> pending)', () => {
 
     fireEvent.change(screen.getByLabelText(/Nombre Completo/i), { target: { value: 'Profesor Test' } });
     fireEvent.change(screen.getByLabelText(/Correo Electrónico/i), { target: { value: 'test@example.com' } });
-    fireEvent.change(screen.getByLabelText(/Contraseña/i), { target: { value: 'Secret123' } });
+    // La UI ahora exige contraseña fuerte con símbolo, confirmación y aceptar términos
+    fireEvent.change(screen.getByLabelText(/^Contraseña$/i), { target: { value: 'Secret123!' } });
+    fireEvent.change(screen.getByLabelText(/Confirmar Contraseña/i), { target: { value: 'Secret123!' } });
+    fireEvent.click(screen.getByLabelText(/Acepto los/i));
     fireEvent.click(screen.getByRole('button', { name: /Crear Cuenta/i }));
 
     await waitFor(() => {
@@ -51,7 +54,7 @@ describe('Flujo login con email no confirmado', () => {
   it('redirige a pending y muestra aviso por intento de login con email sin confirmar', async () => {
     render(<App />);
     fireEvent.change(screen.getByLabelText(/Correo Electrónico/i), { target: { value: 'test2@example.com' } });
-    fireEvent.change(screen.getByLabelText(/Contraseña/i), { target: { value: 'Secret123' } });
+  fireEvent.change(screen.getByLabelText(/^Contraseña$/i), { target: { value: 'Secret123' } });
     fireEvent.click(screen.getByRole('button', { name: /Iniciar Sesión/i }));
 
     await waitFor(() => {
