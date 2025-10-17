@@ -55,7 +55,7 @@ const StageTable: React.FC<Props> = ({ assessment }) => {
                         const present = items.find(it => it.idx === i + 1);
                         const label = getQuestionLabel(blockId, i);
                         const pn = pnLabelFor[`${blockId}#${i}`];
-                        const colorClass = present ? INDICATOR_COLORS[present.val] : 'bg-gray-200 text-gray-500';
+                        const colorClass = present ? INDICATOR_COLORS[present.val] : 'bg-white border border-gray-300 text-gray-700';
                         return (
                           <div key={`${blockId}-${i}`} className="relative group">
                             <span

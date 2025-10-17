@@ -19,9 +19,11 @@ interface PdfPreviewModalProps {
   download: () => Promise<void>;
   pdfPreviewRef: React.RefObject<HTMLDivElement>;
   includeCompletion?: boolean;
+  // Nuevo: restringir a un único tema y evaluación activa opcional
+  selectedModule?: 'lectoescritura'|'matematica';
 }
 
-const PdfPreviewModal: React.FC<PdfPreviewModalProps> = ({ isOpen, onClose, stages, toggleStage, assessments, selectedIds, toggleEval, download, pdfPreviewRef, includeCompletion=false }) => {
+const PdfPreviewModal: React.FC<PdfPreviewModalProps> = ({ isOpen, onClose, stages, toggleStage, assessments, selectedIds, toggleEval, download, pdfPreviewRef, includeCompletion=false, selectedModule }) => {
   useFocusTrap(pdfPreviewRef as React.RefObject<HTMLElement>, isOpen);
   // Cerrar con Escape para accesibilidad adicional
   const escHandler = useCallback((e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); }, [onClose]);
@@ -63,25 +65,23 @@ const PdfPreviewModal: React.FC<PdfPreviewModalProps> = ({ isOpen, onClose, stag
               <Suspense fallback={<div className="p-6"><LoadingSpinner label="Renderizando vista previa" /></div>}>
                 <div className="space-y-4 max-h-[70vh] overflow-auto" id="pdf-preview-scroll">
                   {[...stages].sort((a,b)=> a-b).map(st => {
-                    const evalsForStage = assessments.filter(a => selectedIds.has(a.id) && a.stage === st).slice().sort((a,b)=> new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-                    const seriesLecto = buildPdfSeries(st,'lectoescritura', assessments, selectedIds, includeCompletion);
-                    const seriesMate = buildPdfSeries(st,'matematica', assessments, selectedIds, includeCompletion);
+                    const filtered = assessments.filter(a => selectedIds.has(a.id) && a.stage === st && (!selectedModule || a.module_id === selectedModule)).slice().sort((a,b)=> new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+                    const series = buildPdfSeries(st, selectedModule ?? 'lectoescritura', assessments, selectedIds, includeCompletion);
                     return <div key={st} className="space-y-4">
                       <div className="pdf-page bg-white border rounded-md shadow-sm mx-auto" style={{ width: PREVIEW_PAGE_PX.width, height: PREVIEW_PAGE_PX.height }}>
                         <div className="p-6 space-y-3">
                           <div className="text-xl font-semibold">Reporte de Evaluación</div>
                           <div className="text-xs text-gray-500">Etapa: {st}</div>
                           <div className="grid gap-3">
-                            <div className="border rounded-md p-2"><BarChartMini series={seriesLecto} title={`Lectoescritura — Etapa ${st}`} height={160} minWidth={730} /></div>
-                            <div className="border rounded-md p-2"><BarChartMini series={seriesMate} title={`Matemática — Etapa ${st}`} height={160} minWidth={730} /></div>
+                            <div className="border rounded-md p-2"><BarChartMini series={series} title={`${(selectedModule??'lectoescritura')==='lectoescritura'?'Lectoescritura':'Matemática'} — Etapa ${st}`} height={160} minWidth={730} /></div>
                           </div>
                           <div className="border rounded-lg p-3">
                             <h4 className="font-semibold text-gray-900 mb-2 text-sm">Evaluaciones (Etapa {st})</h4>
-                            {evalsForStage.length? <div className="overflow-x-auto"><table className="min-w-full divide-y divide-gray-200 text-xs"><thead className="bg-gray-50"><tr><th className="px-2 py-1 text-left">Fecha</th><th className="px-2 py-1 text-left">Mód/Et</th><th className="px-2 py-1 text-left">Comp</th><th className="px-2 py-1 text-left">Aut</th><th className="px-2 py-1 text-left">Apoyo</th></tr></thead><tbody className="divide-y divide-gray-100">{evalsForStage.map(a=>{const stat=calculateProgressStatus(a);return <tr key={a.id}><td className="px-2 py-1">{new Date(a.created_at).toLocaleDateString()}</td><td className="px-2 py-1">{a.module_id}/{a.stage}</td><td className="px-2 py-1">{stat.completionRate}%</td><td className="px-2 py-1">{stat.autonomousRate}%</td><td className="px-2 py-1">{stat.supportRate}%</td></tr>;})}</tbody></table></div>: <p className="text-xs text-gray-600">Sin evaluaciones seleccionadas.</p>}
+                            {filtered.length? <div className="overflow-x-auto"><table className="min-w-full divide-y divide-gray-200 text-xs"><thead className="bg-gray-50"><tr><th className="px-2 py-1 text-left">Fecha</th><th className="px-2 py-1 text-left">Mód/Et</th><th className="px-2 py-1 text-left">Comp</th><th className="px-2 py-1 text-left">Aut</th><th className="px-2 py-1 text-left">Apoyo</th></tr></thead><tbody className="divide-y divide-gray-100">{filtered.map(a=>{const stat=calculateProgressStatus(a);return <tr key={a.id}><td className="px-2 py-1">{new Date(a.created_at).toLocaleDateString()}</td><td className="px-2 py-1">{a.module_id}/{a.stage}</td><td className="px-2 py-1">{stat.completionRate}%</td><td className="px-2 py-1">{stat.autonomousRate}%</td><td className="px-2 py-1">{stat.supportRate}%</td></tr>;})}</tbody></table></div>: <p className="text-xs text-gray-600">Sin evaluaciones seleccionadas.</p>}
                           </div>
                         </div>
                       </div>
-                      {evalsForStage.map((a,idx)=>(<div key={a.id+idx} className="pdf-page bg-white border rounded-md shadow-sm mx-auto" style={{ width: PREVIEW_PAGE_PX.width, height: PREVIEW_PAGE_PX.height }}>
+                      {filtered.map((a,idx)=>(<div key={a.id+idx} className="pdf-page bg-white border rounded-md shadow-sm mx-auto" style={{ width: PREVIEW_PAGE_PX.width, height: PREVIEW_PAGE_PX.height }}>
                         <div className="p-6 space-y-3">
                           <div className="text-sm font-semibold">Tareas y preguntas — Etapa {st}</div>
                           <div className="text-xs text-gray-600">{new Date(a.created_at).toLocaleString()} — {a.module_id.toUpperCase()}</div>

@@ -17,5 +17,9 @@ export function usePdfSelection(initialStage: number, assessments: Assessment[])
   const toggleEval = (id:string) => setPdfSelectedIds(prev => { const next = new Set(prev); next.has(id)? next.delete(id): next.add(id); return next; });
   const ensureStageIncluded = (stage:number) => setPdfStages(prev => prev.length ? prev : [stage]);
 
-  return { pdfStages, pdfSelectedIds, toggleStage, toggleEval, ensureStageIncluded, syncAssessments };
+  // Nuevos setters explícitos para ajustar la selección al estado visible
+  const setStagesExplicit = (stages: number[]) => setPdfStages(stages.slice().sort((a,b)=>a-b));
+  const setSelectedIdsExplicit = (ids: Set<string>) => setPdfSelectedIds(new Set(ids));
+
+  return { pdfStages, pdfSelectedIds, toggleStage, toggleEval, ensureStageIncluded, syncAssessments, setStagesExplicit, setSelectedIdsExplicit };
 }

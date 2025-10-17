@@ -43,7 +43,7 @@ const Reports: React.FC = () => {
   }, []);
 
   // Selección PDF
-  const { pdfStages, pdfSelectedIds, toggleEval, toggleStage, ensureStageIncluded, syncAssessments } = usePdfSelection(stage, assessments);
+  const { pdfStages, pdfSelectedIds, toggleEval, toggleStage, ensureStageIncluded, syncAssessments, setStagesExplicit, setSelectedIdsExplicit } = usePdfSelection(stage, assessments);
   useEffect(() => { syncAssessments(); }, [assessments, syncAssessments]);
   useEffect(() => { ensureStageIncluded(stage); }, [stage]);
 
@@ -82,7 +82,17 @@ const Reports: React.FC = () => {
   // PDF preview + descarga
   const pdfPreviewRef = useRef<HTMLDivElement>(null);
   const [showPdfModal, setShowPdfModal] = useState(false);
-  const openPdfModal = () => { ensureStageIncluded(stage); setShowPdfModal(true); };
+  const openPdfModal = () => {
+    // Fijar etapa actual y evaluación activa del tema actual para "exportar lo que veo"
+    setStagesExplicit([stage]);
+    if (activeAssessment) {
+      setSelectedIdsExplicit(new Set([activeAssessment.id]));
+    } else {
+      // fallback: todas las evals del tema/etapa visibles
+      setSelectedIdsExplicit(new Set(filteredByStageAndModule.map(a=>a.id)));
+    }
+    setShowPdfModal(true);
+  };
   const closePdfModal = () => setShowPdfModal(false);
 
   // buildPdfSeries ahora importada
@@ -351,6 +361,7 @@ const Reports: React.FC = () => {
             download={downloadFromPreview}
             pdfPreviewRef={pdfPreviewRef}
             includeCompletion={showCompletion}
+            selectedModule={selectedModule}
           />
         </Suspense>
       )}
