@@ -9,13 +9,12 @@ export interface BuiltSeriesResult {
  * Construye series históricas para un módulo dentro de una colección filtrada de evaluaciones ya de una etapa.
  * Devuelve además el orden cronológico ascendente (ids) para interacción (click / selección).
  */
-export function buildSeriesAndOrder(moduleId: 'lectoescritura' | 'matematica', source: Assessment[]): BuiltSeriesResult {
+export function buildSeriesAndOrder(moduleId: 'lectoescritura' | 'matematica', source: Assessment[], includeCompletion = false): BuiltSeriesResult {
   const filtered = source
     .filter(a => a.module_id === moduleId)
     .slice()
     .reverse(); // ascendente por fecha (asumiendo source viene descendente)
   if (!filtered.length) return { series: [], orderAscIds: [] };
-  const completion = filtered.map(a => calculateProgressStatus(a).completionRate);
   const autonomous = filtered.map(a => calculateProgressStatus(a).autonomousRate);
   const support = filtered.map(a => calculateProgressStatus(a).supportRate);
   const npRate = filtered.map(a => {
@@ -24,29 +23,29 @@ export function buildSeriesAndOrder(moduleId: 'lectoescritura' | 'matematica', s
     const npCount = vals.filter(v => v === 'NP').length;
     return Math.round((npCount / total) * 100);
   });
-  return {
-    series: [
-      { label: 'Completado', values: completion },
-      { label: 'Autónomo', values: autonomous },
-      { label: 'Con apoyo', values: support },
-      { label: 'No logrado', values: npRate }
-    ],
-    orderAscIds: filtered.map(a => a.id)
-  };
+  const base = [
+    { label: 'Autónomo', values: autonomous },
+    { label: 'Con apoyo', values: support },
+    { label: 'No logrado', values: npRate }
+  ];
+  if (includeCompletion) {
+    const completion = filtered.map(a => calculateProgressStatus(a).completionRate);
+    base.unshift({ label: 'Completado', values: completion });
+  }
+  return { series: base, orderAscIds: filtered.map(a => a.id) };
 }
 
 /**
  * Construye series para el PDF: ordena cronológicamente ascendente las evaluaciones seleccionadas
  * por etapa y módulo.
  */
-export function buildPdfSeries(stageNum: number, moduleId: 'lectoescritura' | 'matematica', assessments: Assessment[], selectedIds: Set<string>) {
+export function buildPdfSeries(stageNum: number, moduleId: 'lectoescritura' | 'matematica', assessments: Assessment[], selectedIds: Set<string>, includeCompletion = false) {
   const list = assessments
     .filter(a => selectedIds.has(a.id))
     .filter(a => a.stage === stageNum && a.module_id === moduleId)
     .slice()
     .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
   if (!list.length) return [] as { label: string; values: number[] }[];
-  const completion = list.map(a => calculateProgressStatus(a).completionRate);
   const autonomous = list.map(a => calculateProgressStatus(a).autonomousRate);
   const support = list.map(a => calculateProgressStatus(a).supportRate);
   const npRate = list.map(a => {
@@ -55,10 +54,14 @@ export function buildPdfSeries(stageNum: number, moduleId: 'lectoescritura' | 'm
     const npCount = vals.filter(v => v === 'NP').length;
     return Math.round((npCount / total) * 100);
   });
-  return [
-    { label: 'Completado', values: completion },
+  const base: { label: string; values: number[] }[] = [
     { label: 'Autónomo', values: autonomous },
     { label: 'Con apoyo', values: support },
     { label: 'No logrado', values: npRate }
   ];
+  if (includeCompletion) {
+    const completion = list.map(a => calculateProgressStatus(a).completionRate);
+    base.unshift({ label: 'Completado', values: completion });
+  }
+  return base;
 }

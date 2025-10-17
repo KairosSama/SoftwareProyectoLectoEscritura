@@ -138,3 +138,6 @@ export function groupIndicatorsByBlock(indicators: Assessment['indicators']): Gr
   for (const b of Object.keys(grouped)) grouped[b].sort((a,b)=> a.idx - b.idx);
   return grouped;
 }
+
+// Tamaño A4 en px para previsualización (~96dpi)
+export const PREVIEW_PAGE_PX = { width: 794, height: 1123 } as const;

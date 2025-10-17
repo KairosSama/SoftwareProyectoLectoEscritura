@@ -13,8 +13,11 @@ const Tooltip: React.FC<Props> = ({ tip }) => {
       {tip.title && <div className="font-medium mb-1">{tip.title}</div>}
       {tip.lines?.map(l => (
         <div key={l.name} className="flex justify-between gap-4">
-          <span className="text-gray-600">{l.name}</span>
-            <span className="font-semibold">{l.value}%</span>
+          <span className="text-gray-700">
+            {l.name}
+            <span aria-hidden className="ml-0.5">:</span>
+          </span>
+          <span className="font-semibold">{l.value}%</span>
         </div>
       ))}
     </div>

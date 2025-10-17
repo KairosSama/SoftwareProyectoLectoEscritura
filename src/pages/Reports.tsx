@@ -29,6 +29,15 @@ const Reports: React.FC = () => {
   const { assessments, loading: loadingAssessments, error: assessmentsError } = useStudentAssessments(studentId);
   const [stage, setStage] = useState<number>(1);
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const [showCompletion, setShowCompletion] = useState(false);
+
+  // Evitar salto lateral por aparición/desaparición del scroll (formato legacy Reports2)
+  useEffect(() => {
+    const el = document.documentElement as HTMLElement;
+    const prev = el.style.scrollbarGutter;
+    el.style.scrollbarGutter = 'stable';
+    return () => { el.style.scrollbarGutter = prev; };
+  }, []);
 
   // Selección PDF
   const { pdfStages, pdfSelectedIds, toggleEval, toggleStage, ensureStageIncluded, syncAssessments } = usePdfSelection(stage, assessments);
@@ -44,8 +53,8 @@ const Reports: React.FC = () => {
   const activeAssessment = useMemo(() => filteredByStage[selectedIndex] ?? filteredByStage[0] ?? null, [filteredByStage, selectedIndex]);
 
   // Series para gráficos principales
-  const lecto = useMemo(() => buildSeriesAndOrder('lectoescritura', filteredByStage), [filteredByStage]);
-  const mate = useMemo(() => buildSeriesAndOrder('matematica', filteredByStage), [filteredByStage]);
+  const lecto = useMemo(() => buildSeriesAndOrder('lectoescritura', filteredByStage, showCompletion), [filteredByStage, showCompletion]);
+  const mate = useMemo(() => buildSeriesAndOrder('matematica', filteredByStage, showCompletion), [filteredByStage, showCompletion]);
 
   // Tooltip
   const [tip, setTip] = useState<TooltipState>({ visible: false, x: 0, y: 0 });
@@ -163,6 +172,12 @@ const Reports: React.FC = () => {
             </select>
           </div>
         </div>
+        <div className="flex items-center gap-3 text-sm">
+          <label className="inline-flex items-center gap-2">
+            <input type="checkbox" className="rounded border-gray-300" checked={showCompletion} onChange={e=>setShowCompletion(e.target.checked)} />
+            Mostrar “Completado” como cuarta serie
+          </label>
+        </div>
   <div className="text-xs text-gray-500">{loading ? <LoadingSpinner small label="Cargando datos" /> : assessments.length ? `${assessments.length} evaluaciones cargadas` : 'Sin evaluaciones para mostrar.'}</div>
         {(studentsError || assessmentsError) && <div className="text-sm text-red-600">Error: {studentsError || assessmentsError}</div>}
       </section>
@@ -230,6 +245,7 @@ const Reports: React.FC = () => {
             toggleEval={toggleEval}
             download={downloadFromPreview}
             pdfPreviewRef={pdfPreviewRef}
+            includeCompletion={showCompletion}
           />
         </Suspense>
       )}

@@ -6,6 +6,7 @@ import LoadingSpinner from '../ui/LoadingSpinner';
 import { calculateProgressStatus, Assessment } from '../../lib/mockData';
 import { buildPdfSeries } from './series';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
+import { PREVIEW_PAGE_PX } from './constants';
 
 interface PdfPreviewModalProps {
   isOpen: boolean;
@@ -17,9 +18,10 @@ interface PdfPreviewModalProps {
   toggleEval: (id:string)=>void;
   download: () => Promise<void>;
   pdfPreviewRef: React.RefObject<HTMLDivElement>;
+  includeCompletion?: boolean;
 }
 
-const PdfPreviewModal: React.FC<PdfPreviewModalProps> = ({ isOpen, onClose, stages, toggleStage, assessments, selectedIds, toggleEval, download, pdfPreviewRef }) => {
+const PdfPreviewModal: React.FC<PdfPreviewModalProps> = ({ isOpen, onClose, stages, toggleStage, assessments, selectedIds, toggleEval, download, pdfPreviewRef, includeCompletion=false }) => {
   useFocusTrap(pdfPreviewRef as React.RefObject<HTMLElement>, isOpen);
   // Cerrar con Escape para accesibilidad adicional
   const escHandler = useCallback((e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); }, [onClose]);
@@ -62,10 +64,10 @@ const PdfPreviewModal: React.FC<PdfPreviewModalProps> = ({ isOpen, onClose, stag
                 <div className="space-y-4 max-h-[70vh] overflow-auto" id="pdf-preview-scroll">
                   {[...stages].sort((a,b)=> a-b).map(st => {
                     const evalsForStage = assessments.filter(a => selectedIds.has(a.id) && a.stage === st).slice().sort((a,b)=> new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-                    const seriesLecto = buildPdfSeries(st,'lectoescritura', assessments, selectedIds);
-                    const seriesMate = buildPdfSeries(st,'matematica', assessments, selectedIds);
+                    const seriesLecto = buildPdfSeries(st,'lectoescritura', assessments, selectedIds, includeCompletion);
+                    const seriesMate = buildPdfSeries(st,'matematica', assessments, selectedIds, includeCompletion);
                     return <div key={st} className="space-y-4">
-                      <div className="pdf-page bg-white border rounded-md shadow-sm mx-auto" style={{ width: 794, height: 1123 }}>
+                      <div className="pdf-page bg-white border rounded-md shadow-sm mx-auto" style={{ width: PREVIEW_PAGE_PX.width, height: PREVIEW_PAGE_PX.height }}>
                         <div className="p-6 space-y-3">
                           <div className="text-xl font-semibold">Reporte de Evaluación</div>
                           <div className="text-xs text-gray-500">Etapa: {st}</div>
@@ -79,7 +81,7 @@ const PdfPreviewModal: React.FC<PdfPreviewModalProps> = ({ isOpen, onClose, stag
                           </div>
                         </div>
                       </div>
-                      {evalsForStage.map((a,idx)=>(<div key={a.id+idx} className="pdf-page bg-white border rounded-md shadow-sm mx-auto" style={{ width: 794, height: 1123 }}>
+                      {evalsForStage.map((a,idx)=>(<div key={a.id+idx} className="pdf-page bg-white border rounded-md shadow-sm mx-auto" style={{ width: PREVIEW_PAGE_PX.width, height: PREVIEW_PAGE_PX.height }}>
                         <div className="p-6 space-y-3">
                           <div className="text-sm font-semibold">Tareas y preguntas — Etapa {st}</div>
                           <div className="text-xs text-gray-600">{new Date(a.created_at).toLocaleString()} — {a.module_id.toUpperCase()}</div>
