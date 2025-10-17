@@ -1,6 +1,6 @@
-import React, { useMemo, useState } from 'react';
+import React from 'react';
 import { Assessment } from '../../lib/mockData';
-import { groupIndicatorsByBlock, prettyBlock, getQuestionLabel, INDICATOR_COLORS, QUESTIONS } from './constants';
+import { groupIndicatorsByBlock, prettyBlock, getQuestionLabel, INDICATOR_COLORS } from './constants';
 import Legend from './Legend';
 
 interface Props { assessment?: Assessment | null }
@@ -16,73 +16,62 @@ const StageTable: React.FC<Props> = ({ assessment }) => {
       pnMap[key] = `P${running++}`;
     }
   }
-  // Estado de bloques expandidos para ver preguntas extendidas
-  const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
-  const toggleBlock = (blockId: string) => {
-    setExpanded(prev => {
-      const next = new Set(prev);
-      next.has(blockId) ? next.delete(blockId) : next.add(blockId);
-      return next;
-    });
-  };
+
+  // Vista compacta: columnas por bloque, una fila con cuadrícula de "cuadritos"
+  const blockIds = Object.keys(grouped);
   return (
-    <div className="overflow-x-auto border rounded-lg">
-      <table className="min-w-full divide-y divide-gray-200 text-sm">
-        <thead className="bg-gray-50">
-          <tr>
-            <th className="px-4 py-3 text-left font-semibold text-gray-700">Tarea</th>
-            <th className="px-4 py-3 text-left font-semibold text-gray-700">Preguntas</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-gray-100">
-          {Object.entries(grouped).map(([blockId, items]) => {
-            const saCount = items.filter(i=>i.val==='SA').length;
-            const apCount = items.filter(i=>i.val==='AP').length;
-            const npCount = items.filter(i=>i.val==='NP').length;
-            const totalCatalog = (QUESTIONS[blockId]?.length ?? 0);
-            const presentIdx = new Set(items.map(i=>i.idx));
-            const missingIdxs = useMemo(() => Array.from({ length: totalCatalog }).map((_,i)=>i).filter(i=>!presentIdx.has(i)), [totalCatalog, blockId, items.length]);
-            return (
-            <tr key={blockId}>
-              <td className="px-4 py-3 align-top w-72">
-                <div className="font-medium text-gray-900">{prettyBlock(blockId)}</div>
-                <div className="mt-1 flex items-center gap-2 text-[11px] text-gray-600">
-                  <span className="inline-flex items-center gap-1"><span className="inline-block w-2.5 h-2.5 rounded bg-green-500" aria-hidden /> SA: {saCount}</span>
-                  <span className="inline-flex items-center gap-1"><span className="inline-block w-2.5 h-2.5 rounded bg-yellow-400" aria-hidden /> AP: {apCount}</span>
-                  <span className="inline-flex items-center gap-1"><span className="inline-block w-2.5 h-2.5 rounded bg-red-500" aria-hidden /> NP: {npCount}</span>
-                </div>
-                {totalCatalog > items.length && (
-                  <button type="button" className="mt-2 text-xs text-blue-600 hover:underline" onClick={()=>toggleBlock(blockId)}>
-                    {expanded.has(blockId) ? 'Ver menos' : 'Ver más'}
-                  </button>
-                )}
-              </td>
-              <td className="px-4 py-3">
-                <div className="grid md:grid-cols-2 gap-2">
-                  {items.map(({ idx, key, val }) => (
-                    <div key={key} className="flex items-center gap-2 rounded px-1 py-0.5 hover:bg-gray-50 transition-colors">
-                      <span className={`inline-block w-3 h-3 rounded ${INDICATOR_COLORS[val]}`} />
-                      <span className="inline-flex items-center gap-1 text-gray-800">
-                        <span className="text-[10px] px-1 py-0.5 rounded bg-gray-100 border text-gray-600">{pnMap[key]}</span>
-                        <span>{getQuestionLabel(blockId, idx)}</span>
-                      </span>
-                    </div>
-                  ))}
-                  {expanded.has(blockId) && missingIdxs.map(mIdx => (
-                    <div key={`missing-${blockId}-${mIdx}`} className="flex items-center gap-2 rounded px-1 py-0.5">
-                      <span className="inline-block w-3 h-3 rounded bg-gray-300" />
-                      <span className="inline-flex items-center gap-1 text-gray-500">
-                        <span className="text-[10px] px-1 py-0.5 rounded bg-gray-50 border text-gray-400">—</span>
-                        <span>{getQuestionLabel(blockId, mIdx)}</span>
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </td>
+    <div className="border rounded-lg overflow-visible">
+      <div className="w-full">
+        <table className="w-full table-fixed border-collapse text-sm">
+          <thead>
+            <tr>
+              {blockIds.map((blockId) => (
+                <th
+                  key={blockId}
+                  className="border border-gray-200 bg-gray-100 text-gray-800 font-semibold text-center px-2 py-2"
+                  style={{ width: `${100 / blockIds.length}%`, wordWrap: 'break-word' }}
+                >
+                  {prettyBlock(blockId)}
+                </th>
+              ))}
             </tr>
-          );})}
-        </tbody>
-      </table>
+          </thead>
+
+          <tbody>
+            <tr>
+              {blockIds.map((blockId) => {
+                const items = grouped[blockId] || [];
+                return (
+                  <td
+                    key={blockId}
+                    className="border border-gray-100 px-2 py-3 text-center align-top overflow-visible"
+                  >
+                    <div className="grid grid-cols-5 place-items-center gap-2">
+                      {items.map(({ idx, key, val }) => {
+                        const label = getQuestionLabel(blockId, idx);
+                        const pn = pnMap[key];
+                        return (
+                          <div key={key} className="relative group">
+                            <span
+                              className={`inline-flex items-center justify-center w-8 h-8 rounded ${INDICATOR_COLORS[val]} cursor-default text-[10px] font-semibold text-white/90`}
+                              aria-label={label}
+                              title={`${pn}: ${label}`}
+                            >
+                              {pn}
+                            </span>
+                            {/* Texto accesible para tests/lectores de pantalla */}
+                            <span className="sr-only">{label}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </td>
+                );
+              })}
+            </tr>
+          </tbody>
+        </table>
+      </div>
       <div className="p-3 bg-gray-50 border-t">
         <Legend />
       </div>
