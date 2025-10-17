@@ -286,19 +286,21 @@ const Reports: React.FC = () => {
                     Preguntas de {selectedModule === 'lectoescritura' ? 'Lectoescritura' : 'Matemática'}
                   </div>
                   {expected.map((blockId) => {
-                    const items = (grouped[blockId] || []).slice().sort((a,b)=>a.idx-b.idx);
-                    if (!items.length) return null;
+                    const total = QUESTIONS[blockId]?.length ?? (grouped[blockId]?.length ?? 0);
+                    if (!total) return null;
+                    const present = new Set((grouped[blockId] || []).map(it => it.idx));
                     return (
                       <div key={blockId} className="mb-3 last:mb-0">
                         <div className="text-sm font-medium text-gray-700 mb-2" aria-hidden="true">{prettyBlock(blockId)}</div>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-1">
-                          {items.map(({ idx, key }) => {
-                            const pn = pnFor[`${blockId}#${idx-1}`];
-                            const label = getQuestionLabel(blockId, idx-1);
+                          {Array.from({ length: total }).map((_, i) => {
+                            const pn = pnFor[`${blockId}#${i}`];
+                            const label = getQuestionLabel(blockId, i);
+                            const answered = present.has(i);
                             return (
-                              <div key={key} className="text-sm text-gray-800 flex gap-2">
+                              <div key={`${blockId}#${i}`} className="text-sm flex gap-2">
                                 <span className="inline-flex min-w-[2.25rem] justify-center rounded bg-gray-100 border border-gray-200 px-2 py-0.5 text-[11px] font-semibold">{pn}</span>
-                                <span>{label}</span>
+                                <span className={answered ? 'text-gray-800' : 'text-gray-500 italic'}>{label}</span>
                               </div>
                             );
                           })}
