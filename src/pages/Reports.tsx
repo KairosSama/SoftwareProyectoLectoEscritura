@@ -12,6 +12,7 @@ import { TooltipState } from '../components/reports/types';
 import { buildSeriesAndOrder } from '../components/reports/series';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import Skeleton from '../components/ui/Skeleton';
+import { groupIndicatorsByBlock, prettyBlock, getQuestionLabel, MODULE_STAGE_BLOCKS, QUESTIONS } from '../components/reports/constants';
 const PdfPreviewModal = lazy(()=> import('../components/reports/PdfPreviewModal'));
 
 // Memo wrappers para reducir renders de tablas y gráficos grandes
@@ -28,8 +29,10 @@ const Reports: React.FC = () => {
   const [studentId, setStudentId] = useState<string>('');
   const { assessments, loading: loadingAssessments, error: assessmentsError } = useStudentAssessments(studentId);
   const [stage, setStage] = useState<number>(1);
+  const [selectedModule, setSelectedModule] = useState<'lectoescritura'|'matematica'>('lectoescritura');
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [showCompletion, setShowCompletion] = useState(false);
+  const [showAllQuestions, setShowAllQuestions] = useState(false);
 
   // Evitar salto lateral por aparición/desaparición del scroll (formato legacy Reports2)
   useEffect(() => {
@@ -49,8 +52,15 @@ const Reports: React.FC = () => {
 
   // Filtrar por etapa
   const filteredByStage = useMemo(() => assessments.filter(a => a.stage === stage), [assessments, stage]);
-  useEffect(() => { setSelectedIndex(0); }, [stage, assessments.length]);
-  const activeAssessment = useMemo(() => filteredByStage[selectedIndex] ?? filteredByStage[0] ?? null, [filteredByStage, selectedIndex]);
+  const filteredByStageAndModule = useMemo(
+    () => filteredByStage.filter(a => a.module_id === selectedModule),
+    [filteredByStage, selectedModule]
+  );
+  useEffect(() => { setSelectedIndex(0); }, [stage, selectedModule, assessments.length]);
+  const activeAssessment = useMemo(
+    () => filteredByStageAndModule[selectedIndex] ?? filteredByStageAndModule[0] ?? null,
+    [filteredByStageAndModule, selectedIndex]
+  );
 
   // Series para gráficos principales
   const lecto = useMemo(() => buildSeriesAndOrder('lectoescritura', filteredByStage, showCompletion), [filteredByStage, showCompletion]);
@@ -65,7 +75,7 @@ const Reports: React.FC = () => {
   const hideTooltip = () => setTip(t => ({ ...t, visible: false }));
   const handleBarClick = (orderAscIds: string[]) => (i: number) => {
     const id = orderAscIds[i];
-    const idx = filteredByStage.findIndex(a => a.id === id);
+    const idx = filteredByStageAndModule.findIndex(a => a.id === id);
     if (idx !== -1) setSelectedIndex(idx);
   };
 
@@ -152,7 +162,7 @@ const Reports: React.FC = () => {
 
       {/* Filtros */}
       <section className="bg-white rounded-lg border p-4 space-y-4">
-        <div className="grid md:grid-cols-4 gap-4">
+        <div className="grid md:grid-cols-5 gap-4">
           <div className="col-span-2">
             <label htmlFor="student-select" className="text-sm text-gray-600 flex items-center gap-2"><User className="h-4 w-4 text-gray-500" /> Estudiante</label>
             <select id="student-select" className="mt-1 w-full border rounded-md px-3 py-2" value={studentId} onChange={e=>setStudentId(e.target.value)}>
@@ -166,9 +176,16 @@ const Reports: React.FC = () => {
             </select>
           </div>
           <div>
+            <label htmlFor="module-select" className="text-sm text-gray-600">Tema</label>
+            <select id="module-select" className="mt-1 w-full border rounded-md px-3 py-2" value={selectedModule} onChange={e=>setSelectedModule(e.target.value as 'lectoescritura'|'matematica')}>
+              <option value="lectoescritura">Lectoescritura</option>
+              <option value="matematica">Matemática</option>
+            </select>
+          </div>
+          <div>
             <label htmlFor="assessment-select" className="text-sm text-gray-600">Evaluación</label>
-            <select id="assessment-select" className="mt-1 w-full border rounded-md px-3 py-2" value={selectedIndex} onChange={e=>setSelectedIndex(parseInt(e.target.value))} disabled={!filteredByStage.length}>
-              {filteredByStage.map((a,i)=>(<option key={a.id} value={i}>{new Date(a.created_at).toLocaleString()} — {a.module_id} (Etapa {a.stage})</option>))}
+            <select id="assessment-select" className="mt-1 w-full border rounded-md px-3 py-2" value={selectedIndex} onChange={e=>setSelectedIndex(parseInt(e.target.value))} disabled={!filteredByStageAndModule.length}>
+              {filteredByStageAndModule.map((a,i)=>(<option key={a.id} value={i}>{new Date(a.created_at).toLocaleString()} — {a.module_id} (Etapa {a.stage})</option>))}
             </select>
           </div>
         </div>
@@ -182,22 +199,110 @@ const Reports: React.FC = () => {
         {(studentsError || assessmentsError) && <div className="text-sm text-red-600">Error: {studentsError || assessmentsError}</div>}
       </section>
 
-      {/* Gráficos */}
-      <section className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      {/* Gráfico del tema seleccionado */}
+      <section className="grid grid-cols-1 gap-4">
         <div className="bg-white rounded-lg border p-3">
-          <div className="flex items-center gap-2 mb-2"><BarChart3 className="h-5 w-5 text-blue-600" /><h3 className="font-semibold text-gray-900">Lectoescritura — Etapa {stage}</h3></div>
-          {loading ? <Skeleton lines={6} className="mt-2" lineClassName="w-full" /> : lecto.series.length ? <BarChartMini series={lecto.series} title="Histórico" onBarHover={makeHoverHandlerMain(lecto.series, 'Lectoescritura')} onLeave={hideTooltip} onBarClick={handleBarClick(lecto.orderAscIds)} /> : <p className="text-sm text-gray-600">Sin datos.</p>}
-        </div>
-        <div className="bg-white rounded-lg border p-3">
-          <div className="flex items-center gap-2 mb-2"><BarChart3 className="h-5 w-5 text-blue-600" /><h3 className="font-semibold text-gray-900">Matemática — Etapa {stage}</h3></div>
-          {loading ? <Skeleton lines={6} className="mt-2" lineClassName="w-full" /> : mate.series.length ? <BarChartMini series={mate.series} title="Histórico" onBarHover={makeHoverHandlerMain(mate.series, 'Matemática')} onLeave={hideTooltip} onBarClick={handleBarClick(mate.orderAscIds)} /> : <p className="text-sm text-gray-600">Sin datos.</p>}
+          <div className="flex items-center gap-2 mb-2">
+            <BarChart3 className="h-5 w-5 text-blue-600" />
+            <h3 className="font-semibold text-gray-900">{selectedModule === 'lectoescritura' ? 'Lectoescritura' : 'Matemática'} — Etapa {stage}</h3>
+          </div>
+          {loading ? (
+            <Skeleton lines={6} className="mt-2" lineClassName="w-full" />
+          ) : selectedModule === 'lectoescritura' ? (
+            lecto.series.length ? (
+              <BarChartMini
+                series={lecto.series}
+                title="Histórico"
+                onBarHover={makeHoverHandlerMain(lecto.series, 'Lectoescritura')}
+                onLeave={hideTooltip}
+                onBarClick={handleBarClick(lecto.orderAscIds)}
+              />
+            ) : (
+              <p className="text-sm text-gray-600">No hay evaluaciones para esta etapa en Lectoescritura.</p>
+            )
+          ) : (
+            mate.series.length ? (
+              <BarChartMini
+                series={mate.series}
+                title="Histórico"
+                onBarHover={makeHoverHandlerMain(mate.series, 'Matemática')}
+                onLeave={hideTooltip}
+                onBarClick={handleBarClick(mate.orderAscIds)}
+              />
+            ) : (
+              <p className="text-sm text-gray-600">No hay evaluaciones para esta etapa en Matemática.</p>
+            )
+          )}
         </div>
       </section>
 
       {/* Tabla de tareas */}
       <section className="bg-white rounded-lg border p-4">
-        <div className="flex items-center gap-2 mb-3"><Table className="h-5 w-5 text-blue-600" /><h3 className="font-semibold text-gray-900">Tareas y preguntas — (Eval seleccionada / Etapa {activeAssessment?.stage ?? stage})</h3></div>
-        {activeAssessment ? <StageTable assessment={activeAssessment} /> : <div className="text-sm text-gray-600">No hay evaluación cargada.</div>}
+        <div className="flex items-center justify-between gap-2 mb-3">
+          <div className="flex items-center gap-2">
+            <Table className="h-5 w-5 text-blue-600" />
+            <h3 className="font-semibold text-gray-900">Tareas y preguntas — ({selectedModule === 'lectoescritura' ? 'Lectoescritura' : 'Matemática'} / Etapa {activeAssessment?.stage ?? stage}{activeAssessment ? '' : ''})</h3>
+          </div>
+          {activeAssessment && (
+            <button
+              type="button"
+              className="text-xs text-blue-600 hover:underline"
+              onClick={()=> setShowAllQuestions(v=>!v)}
+              aria-expanded={showAllQuestions}
+            >
+              {showAllQuestions ? 'Ocultar preguntas del tema' : 'Mostrar preguntas del tema'}
+            </button>
+          )}
+        </div>
+        {activeAssessment ? (
+          <>
+            <StageTable assessment={activeAssessment} />
+            {/* Explicación de cada P del tema (dos columnas) */}
+            {showAllQuestions && (() => {
+              const grouped = groupIndicatorsByBlock(activeAssessment.indicators);
+              // Bloques esperados por el mapeo para mantener PN consistente
+              const expected = MODULE_STAGE_BLOCKS[selectedModule]?.[activeAssessment.stage] || Object.keys(grouped);
+              // Construimos PN continuo igual que en StageTable (por bloque esperado y por índice)
+              const pnFor: Record<string, string> = {};
+              let running = 1;
+              for (const blockId of expected) {
+                const count = QUESTIONS[blockId]?.length ?? (grouped[blockId]?.length ?? 0);
+                for (let i = 0; i < count; i++) pnFor[`${blockId}#${i}`] = `P${running++}`;
+              }
+              // Renderizar sólo los ítems presentes en la evaluación actual, agrupados por bloque
+              return (
+                <div className="mt-6">
+                  <div className="text-sm font-semibold text-gray-800 mb-2">
+                    Preguntas de {selectedModule === 'lectoescritura' ? 'Lectoescritura' : 'Matemática'}
+                  </div>
+                  {expected.map((blockId) => {
+                    const items = (grouped[blockId] || []).slice().sort((a,b)=>a.idx-b.idx);
+                    if (!items.length) return null;
+                    return (
+                      <div key={blockId} className="mb-3 last:mb-0">
+                        <div className="text-sm font-medium text-gray-700 mb-2" aria-hidden="true">{prettyBlock(blockId)}</div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-1">
+                          {items.map(({ idx, key }) => {
+                            const pn = pnFor[`${blockId}#${idx-1}`];
+                            const label = getQuestionLabel(blockId, idx-1);
+                            return (
+                              <div key={key} className="text-sm text-gray-800 flex gap-2">
+                                <span className="inline-flex min-w-[2.25rem] justify-center rounded bg-gray-100 border border-gray-200 px-2 py-0.5 text-[11px] font-semibold">{pn}</span>
+                                <span>{label}</span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })()}
+          </>
+        ) : (
+          <div className="text-sm text-gray-600">No hay evaluación cargada.</div>
+        )}
       </section>
 
       {/* Resumen evaluaciones */}
