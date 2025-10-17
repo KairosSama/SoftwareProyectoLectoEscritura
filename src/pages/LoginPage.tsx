@@ -28,6 +28,21 @@ function LoginPage() {
     setError('');
     setLoading(true);
 
+    const toUserMessage = (err: any): string => {
+      const raw = (err?.message ?? '').toString();
+      // Mapear errores de red genéricos de fetch/Supabase
+      if (/Failed to fetch|NetworkError|TypeError: Failed to fetch|ERR_NETWORK|Load failed/i.test(raw)) {
+        return 'No se pudo conectar con el servidor. Verifica tu conexión e inténtalo nuevamente en unos segundos.';
+      }
+      if (/Invalid login credentials/i.test(raw)) {
+        return 'Credenciales inválidas. Revisa tu correo y contraseña.';
+      }
+      if (/timeout/i.test(raw)) {
+        return 'La solicitud tardó demasiado. Inténtalo nuevamente.';
+      }
+      return raw || 'Ha ocurrido un error';
+    };
+
     try {
       if (!isLogin) {
         // Validaciones previas
@@ -53,7 +68,7 @@ function LoginPage() {
         }
       }
     } catch (err: any) {
-      const msg = err.message || 'Ha ocurrido un error';
+      const msg = toUserMessage(err);
       // Supabase error cuando email no confirmado puede contener 'Email not confirmed'
       if (/not.*confirm/i.test(msg) || /email.*confirm/i.test(msg)) {
         try { 
