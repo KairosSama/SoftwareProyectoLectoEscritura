@@ -20,10 +20,7 @@ const StageTable: React.FC<Props> = ({ assessment, variant='screen' }) => {
   return (
     <div className={`border rounded-lg overflow-visible ${variant==='pdf' ? 'text-[12px]' : ''}`}>
       <div className="w-full">
-        <table
-          className={`w-full table-fixed ${variant==='pdf' ? 'border-separate' : 'border-collapse'} text-sm`}
-          style={variant==='pdf' ? { borderSpacing: '8px 6px' } : undefined}
-        >
+        <table className="w-full table-fixed border-collapse text-sm">
           <thead>
             <tr>
               {blockIds.map((blockId) => (
@@ -42,42 +39,23 @@ const StageTable: React.FC<Props> = ({ assessment, variant='screen' }) => {
               {blockIds.map((blockId) => {
                 const items = (grouped[blockId] ?? []) as Array<{ idx: number; key: string; val: 'SA'|'AP'|'NP' }>; 
                 const cellBase = 'text-center align-top overflow-visible';
-                const cellClass = variant==='pdf' ? `border border-gray-200 rounded-md px-3 py-4 ${cellBase}` : `border border-gray-100 px-2 py-3 ${cellBase}`;
+                const cellClass = variant==='pdf' ? `border border-gray-100 px-3 py-3 ${cellBase}` : `border border-gray-100 px-2 py-3 ${cellBase}`;
                 return (
                   <td key={blockId} className={cellClass}>
-                    {variant==='pdf' ? (
-                      <div className="rounded-md ring-1 ring-gray-200 bg-white p-2">
-                        <div className="grid grid-cols-5 place-items-center gap-3">
-                          {(QUESTIONS[blockId] ?? []).map((_, i) => {
-                            const present = items.find((it) => it.idx === i + 1);
-                            const label = getQuestionLabel(blockId, i);
-                            const pn = pnLabelFor[`${blockId}#${i}`];
-                            const colorClass = present ? INDICATOR_COLORS[present.val] : 'bg-white border border-gray-300 text-gray-700';
-                            return (
-                              <div key={`${blockId}-${i}`} className="relative group">
-                                <span
-                                  className={`inline-flex items-center justify-center w-9 h-9 rounded ${colorClass} cursor-default text-[10px] font-semibold ${present ? 'text-white/90' : ''}`}
-                                  title={`${pn}: ${label}`}
-                                >
-                                  {pn}
-                                </span>
-                                <span className="sr-only">{label}</span>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="grid grid-cols-5 place-items-center gap-2">
+                    {(
+                      <div className={variant==='pdf' ? 'grid grid-cols-5 place-items-center gap-2.5' : 'grid grid-cols-5 place-items-center gap-2'}>
                         {(QUESTIONS[blockId] ?? []).map((_, i) => {
                           const present = items.find((it) => it.idx === i + 1);
                           const label = getQuestionLabel(blockId, i);
                           const pn = pnLabelFor[`${blockId}#${i}`];
-                          const colorClass = present ? INDICATOR_COLORS[present.val] : 'bg-white border border-gray-300 text-gray-700';
+                          const baseColor = present ? INDICATOR_COLORS[present.val] : 'bg-white border border-gray-300 text-gray-700';
+                          // Mejor legibilidad sobre amarillo (AP)
+                          const textColor = present && present.val === 'AP' ? 'text-gray-900' : (present ? 'text-white/90' : '');
+                          const colorClass = baseColor;
                           return (
                             <div key={`${blockId}-${i}`} className="relative group">
                               <span
-                                className={`inline-flex items-center justify-center w-8 h-8 rounded ${colorClass} cursor-default text-[10px] font-semibold ${present ? 'text-white/90' : ''}`}
+                                className={`inline-flex items-center justify-center ${variant==='pdf' ? 'w-8 h-8' : 'w-8 h-8'} rounded ${colorClass} cursor-default text-[10px] font-semibold ${textColor} font-mono leading-none tracking-tight`}
                                 title={`${pn}: ${label}`}
                               >
                                 {pn}
