@@ -2,6 +2,7 @@ import React, { Suspense, useEffect, useCallback } from 'react';
 import { Download, X } from 'lucide-react';
 import BarChartMini from './BarChartMini';
 import StageTable from './StageTable';
+import { groupIndicatorsByBlock, MODULE_STAGE_BLOCKS, QUESTIONS, prettyBlock, getQuestionLabel } from './constants';
 import LoadingSpinner from '../ui/LoadingSpinner';
 import { calculateProgressStatus, Assessment } from '../../lib/mockData';
 import { buildPdfSeries } from './series';
@@ -85,7 +86,47 @@ const PdfPreviewModal: React.FC<PdfPreviewModalProps> = ({ isOpen, onClose, stag
                         <div className="p-6 space-y-3">
                           <div className="text-sm font-semibold">Tareas y preguntas — Etapa {st}</div>
                           <div className="text-xs text-gray-600">{new Date(a.created_at).toLocaleString()} — {a.module_id.toUpperCase()}</div>
-                          <StageTable assessment={a} />
+                          <StageTable assessment={a} variant="pdf" />
+                          {/* Lista de preguntas con PN y etiquetas */}
+                          {(() => {
+                            const grouped = groupIndicatorsByBlock(a.indicators);
+                            const moduleId = a.module_id as 'lectoescritura'|'matematica';
+                            const expected = MODULE_STAGE_BLOCKS[moduleId]?.[a.stage] || Object.keys(grouped);
+                            const pnFor: Record<string, string> = {};
+                            let running = 1;
+                            for (const blockId of expected) {
+                              const count = QUESTIONS[blockId]?.length ?? (grouped[blockId]?.length ?? 0);
+                              for (let i = 0; i < count; i++) pnFor[`${blockId}#${i}`] = `P${running++}`;
+                            }
+                            return (
+                              <div className="mt-4">
+                                <div className="text-xs font-semibold text-gray-800 mb-2">Preguntas de {(moduleId==='lectoescritura')?'Lectoescritura':'Matemática'}</div>
+                                {expected.map((blockId) => {
+                                  const total = QUESTIONS[blockId]?.length ?? (grouped[blockId]?.length ?? 0);
+                                  if (!total) return null;
+                                  const present = new Set((grouped[blockId] || []).map(it => it.idx-1));
+                                  return (
+                                    <div key={blockId} className="mb-2 last:mb-0">
+                                      <div className="text-xs font-medium text-gray-700 mb-1">{prettyBlock(blockId)}</div>
+                                      <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-1">
+                                        {Array.from({ length: total }).map((_, i) => {
+                                          const pn = pnFor[`${blockId}#${i}`];
+                                          const label = getQuestionLabel(blockId, i);
+                                          const answered = present.has(i);
+                                          return (
+                                            <div key={`${blockId}#${i}`} className="text-[11px] flex gap-2">
+                                              <span className="inline-flex min-w-[2rem] justify-center rounded bg-gray-100 border border-gray-200 px-1.5 py-0.5 font-semibold">{pn}</span>
+                                              <span className={answered ? 'text-gray-800' : 'text-gray-500 italic'}>{label}</span>
+                                            </div>
+                                          );
+                                        })}
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            );
+                          })()}
                         </div>
                       </div>))}
                     </div>;
