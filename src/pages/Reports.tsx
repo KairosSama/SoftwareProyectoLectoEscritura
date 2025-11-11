@@ -506,7 +506,8 @@ const Reports: React.FC = () => {
             <div className="text-sm text-gray-600">No hay evaluación cargada.</div>
           )
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          // En modo multi/grupo apilamos las tablas verticalmente a pantalla completa
+          <div className="grid grid-cols-1 gap-4">
             {(() => {
               const selectedIds = selectionMode==='multi' ? multiStudentIds : Object.keys(multiAssessmentsMap);
               if (!selectedIds.length) return <p className="text-sm text-gray-600">Selecciona estudiantes para ver sus tablas.</p>;
