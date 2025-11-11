@@ -10,6 +10,8 @@ import Tooltip from '../components/reports/Tooltip';
 import Legend from '../components/reports/Legend';
 import { TooltipState } from '../components/reports/types';
 import { buildSeriesAndOrder } from '../components/reports/series';
+import { listGroups, getGroupWithStudents, type StudentGroup } from '../lib/groups';
+import { getStorageKey } from '../lib/mockData';
 import LoadingSpinner from '../components/ui/LoadingSpinner';
 import Skeleton from '../components/ui/Skeleton';
 import { groupIndicatorsByBlock, prettyBlock, getQuestionLabel, MODULE_STAGE_BLOCKS, QUESTIONS } from '../components/reports/constants';
@@ -26,13 +28,25 @@ const StageTable = React.memo(StageTableRaw);
 const Reports: React.FC = () => {
   // Estado base
   const { students, loading: loadingStudents, error: studentsError } = useStudents();
-  const [studentId, setStudentId] = useState<string>('');
+  // Modo de selección: single (legacy), multi (varios estudiantes), group (por grupo)
+  const [selectionMode, setSelectionMode] = useState<'single'|'multi'|'group'>('single');
+  const [studentId, setStudentId] = useState<string>(''); // usado cuando single
+  const [multiStudentIds, setMultiStudentIds] = useState<string[]>([]); // usado cuando multi
+  const [groups, setGroups] = useState<StudentGroup[]>([]); // grupos disponibles
+  const [selectedGroupId, setSelectedGroupId] = useState<string>(''); // usado cuando group
   const { assessments, loading: loadingAssessments, error: assessmentsError } = useStudentAssessments(studentId);
+  // Evaluaciones múltiples (para modo multi / group) - mapa student_id -> evaluaciones
+  const [multiAssessmentsMap, setMultiAssessmentsMap] = useState<Record<string, any[]>>({});
+  const [loadingMultiAssessments, setLoadingMultiAssessments] = useState(false);
+  const [multiError, setMultiError] = useState<string|null>(null);
   const [stage, setStage] = useState<number>(1);
   const [selectedModule, setSelectedModule] = useState<'lectoescritura'|'matematica'>('lectoescritura');
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [showCompletion, setShowCompletion] = useState(false);
   const [showAllQuestions, setShowAllQuestions] = useState(false);
+  // Nota del reporte (visible en portada PDF); persiste por contexto de selección
+  const [reportNote, setReportNote] = useState('');
+  const [noteLoadedKey, setNoteLoadedKey] = useState('');
 
   // Evitar salto lateral por aparición/desaparición del scroll (formato legacy Reports2)
   useEffect(() => {
@@ -46,9 +60,89 @@ const Reports: React.FC = () => {
   const { pdfStages, pdfSelectedIds, toggleEval, toggleStage, ensureStageIncluded, syncAssessments, setStagesExplicit, setSelectedIdsExplicit } = usePdfSelection(stage, assessments);
   useEffect(() => { syncAssessments(); }, [assessments, syncAssessments]);
   useEffect(() => { ensureStageIncluded(stage); }, [stage]);
+  // Clave dinámica para persistir la nota según selección actual
+  const buildNoteKey = () => {
+    if (selectionMode === 'single') return `note_${selectedModule}_${stage}_${studentId||'none'}`;
+    if (selectionMode === 'multi') return `note_${selectedModule}_${stage}_multi_${multiStudentIds.slice().sort().join('-')||'none'}`;
+    if (selectionMode === 'group') return `note_${selectedModule}_${stage}_group_${selectedGroupId||'none'}`;
+    return `note_${selectedModule}_${stage}_unknown`;
+  };
 
-  // Seleccionar estudiante inicial
-  useEffect(() => { if (students.length && !studentId) setStudentId(students[0].id); }, [students, studentId]);
+  // Cargar nota al cambiar el contexto
+  useEffect(() => {
+    const key = buildNoteKey();
+    if (key === noteLoadedKey) return;
+    try {
+      const raw = localStorage.getItem(getStorageKey(key));
+      setReportNote(raw ? JSON.parse(raw) : '');
+      setNoteLoadedKey(key);
+    } catch {
+      setReportNote('');
+      setNoteLoadedKey(key);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectionMode, studentId, multiStudentIds, selectedGroupId, stage, selectedModule]);
+
+  // Guardar nota con pequeño debounce
+  useEffect(() => {
+    if (!noteLoadedKey) return;
+    const t = setTimeout(() => {
+      try { localStorage.setItem(getStorageKey(noteLoadedKey), JSON.stringify(reportNote)); } catch {}
+    }, 300);
+    return () => clearTimeout(t);
+  }, [reportNote, noteLoadedKey]);
+
+  // Cargar grupos inicial
+  useEffect(() => { (async()=> { try { const gs = await listGroups(); setGroups(gs); } catch (e) { /* silencioso */ } })(); }, []);
+
+  // Seleccionar estudiante inicial en modo single
+  useEffect(() => { if (selectionMode==='single' && students.length && !studentId) setStudentId(students[0].id); }, [students, studentId, selectionMode]);
+
+  // Reset de selección al cambiar modo
+  useEffect(() => {
+    if (selectionMode === 'single') {
+      setMultiStudentIds([]); setSelectedGroupId('');
+    } else if (selectionMode === 'multi') {
+      setSelectedGroupId('');
+      // Preseleccionar primero si venimos de single
+      if (studentId) setMultiStudentIds([studentId]);
+    } else if (selectionMode === 'group') {
+      setMultiStudentIds([]);
+      if (groups.length) setSelectedGroupId(prev => prev || groups[0].id);
+    }
+  }, [selectionMode, studentId, groups]);
+
+  // Cargar evaluaciones para selección múltiple / grupo
+  useEffect(() => {
+    const load = async () => {
+      if (selectionMode === 'single') { setMultiAssessmentsMap({}); return; }
+      setLoadingMultiAssessments(true); setMultiError(null);
+      try {
+        let ids: string[] = [];
+        if (selectionMode === 'multi') ids = multiStudentIds;
+        else if (selectionMode === 'group' && selectedGroupId) {
+          try {
+            const { studentIds } = await getGroupWithStudents(selectedGroupId);
+            ids = studentIds;
+          } catch (e:any) { setMultiError(e.message || 'Error cargando grupo'); }
+        }
+        const map: Record<string, any[]> = {};
+        // Reuso de getAssessmentsByStudent dinámico import (circular evitado usando mockData directa)
+        if (ids.length) {
+          const mod = await import('../lib/mockData');
+          await Promise.all(ids.map(async sid => {
+            try { map[sid] = await mod.getAssessmentsByStudent(sid); } catch { map[sid] = []; }
+          }));
+        }
+        setMultiAssessmentsMap(map);
+      } catch (e:any) {
+        setMultiError(e.message || 'Error cargando evaluaciones múltiples');
+      } finally {
+        setLoadingMultiAssessments(false);
+      }
+    };
+    void load();
+  }, [selectionMode, multiStudentIds, selectedGroupId]);
 
   // Filtrar por etapa
   const filteredByStage = useMemo(() => assessments.filter(a => a.stage === stage), [assessments, stage]);
@@ -154,7 +248,7 @@ const Reports: React.FC = () => {
     ] };
   }, [students, assessments]);
 
-  const loading = loadingStudents || loadingAssessments;
+  const loading = loadingStudents || loadingAssessments || loadingMultiAssessments;
 
   return (
     <div className="max-w-7xl mx-auto p-4 space-y-6">
@@ -165,19 +259,66 @@ const Reports: React.FC = () => {
           <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Reportes y Analíticas</h1>
           <p className="text-gray-600 mt-1">Seguimiento avanzado del progreso y exportación a PDF.</p>
         </div>
-        <button onClick={openPdfModal} disabled={!assessments.length} className="inline-flex items-center gap-2 bg-blue-600 disabled:opacity-50 text-white px-4 py-2 rounded-md hover:bg-blue-700">
+        <button onClick={openPdfModal} disabled={selectionMode==='single' ? !assessments.length : (selectionMode==='multi' ? multiStudentIds.length===0 : !selectedGroupId)} className="inline-flex items-center gap-2 bg-blue-600 disabled:opacity-50 text-white px-4 py-2 rounded-md hover:bg-blue-700">
           <Download className="h-4 w-4" /> PDF / Previsualizar
         </button>
       </header>
 
       {/* Filtros */}
       <section className="bg-white rounded-lg border p-4 space-y-4">
+        {/* Modo de selección */}
+        <div className="flex flex-wrap gap-4 text-sm">
+          <label className="inline-flex items-center gap-2">
+            <input type="radio" name="selmode" value="single" checked={selectionMode==='single'} onChange={()=>setSelectionMode('single')} />
+            Un estudiante
+          </label>
+          <label className="inline-flex items-center gap-2">
+            <input type="radio" name="selmode" value="multi" checked={selectionMode==='multi'} onChange={()=>setSelectionMode('multi')} />
+            Varios estudiantes
+          </label>
+          <label className="inline-flex items-center gap-2">
+            <input type="radio" name="selmode" value="group" checked={selectionMode==='group'} onChange={()=>setSelectionMode('group')} />
+            Por grupo
+          </label>
+        </div>
         <div className="grid md:grid-cols-5 gap-4">
           <div className="col-span-2">
-            <label htmlFor="student-select" className="text-sm text-gray-600 flex items-center gap-2"><User className="h-4 w-4 text-gray-500" /> Estudiante</label>
-            <select id="student-select" className="mt-1 w-full border rounded-md px-3 py-2" value={studentId} onChange={e=>setStudentId(e.target.value)}>
-              {students.map(s => <option key={s.id} value={s.id}>{s.full_name}</option>)}
-            </select>
+            {selectionMode === 'single' && (
+              <div>
+                <label htmlFor="student-select" className="text-sm text-gray-600 flex items-center gap-2"><User className="h-4 w-4 text-gray-500" /> Estudiante</label>
+                <select id="student-select" className="mt-1 w-full border rounded-md px-3 py-2" value={studentId} onChange={e=>setStudentId(e.target.value)}>
+                  {students.map(s => <option key={s.id} value={s.id}>{s.full_name}</option>)}
+                </select>
+              </div>
+            )}
+            {selectionMode === 'multi' && (
+              <div>
+                <div className="text-sm text-gray-600 flex items-center gap-2 mb-1"><User className="h-4 w-4 text-gray-500" /> Estudiantes</div>
+                <div className="max-h-40 overflow-y-auto border rounded-md px-2 py-2 space-y-1 text-sm">
+                  {students.map(s => {
+                    const checked = multiStudentIds.includes(s.id);
+                    return (
+                      <label key={s.id} className="flex items-center gap-2">
+                        <input type="checkbox" checked={checked} onChange={() => {
+                          setMultiStudentIds(prev => checked ? prev.filter(id=>id!==s.id) : [...prev, s.id]);
+                        }} />
+                        <span className="truncate" title={s.full_name}>{s.full_name}</span>
+                      </label>
+                    );
+                  })}
+                  {!students.length && <div className="text-gray-500 italic">Sin estudiantes</div>}
+                </div>
+              </div>
+            )}
+            {selectionMode === 'group' && (
+              <div>
+                <label htmlFor="group-select" className="text-sm text-gray-600 flex items-center gap-2"><User className="h-4 w-4 text-gray-500" /> Grupo</label>
+                <select id="group-select" className="mt-1 w-full border rounded-md px-3 py-2" value={selectedGroupId} onChange={e=>setSelectedGroupId(e.target.value)}>
+                  {groups.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
+                  {!groups.length && <option value="">Sin grupos</option>}
+                </select>
+              </div>
+            )}
           </div>
           <div>
             <label htmlFor="stage-select" className="text-sm text-gray-600">Etapa</label>
@@ -205,11 +346,24 @@ const Reports: React.FC = () => {
             Mostrar “Completado” como cuarta serie
           </label>
         </div>
-  <div className="text-xs text-gray-500">{loading ? <LoadingSpinner small label="Cargando datos" /> : assessments.length ? `${assessments.length} evaluaciones cargadas` : 'Sin evaluaciones para mostrar.'}</div>
+  <div className="text-xs text-gray-500">{loading ? <LoadingSpinner small label="Cargando datos" /> : selectionMode==='single' ? (assessments.length ? `${assessments.length} evaluaciones cargadas` : 'Sin evaluaciones para mostrar') : Object.keys(multiAssessmentsMap).length ? `${Object.keys(multiAssessmentsMap).length} estudiantes seleccionados` : (selectionMode==='multi' ? 'Selecciona estudiantes' : 'Selecciona un grupo')}</div>
         {(studentsError || assessmentsError) && <div className="text-sm text-red-600">Error: {studentsError || assessmentsError}</div>}
+        {multiError && <div className="text-sm text-red-600">Error múltiple: {multiError}</div>}
+        {/* Nota del reporte */}
+        <div className="space-y-2">
+          <label htmlFor="report-note" className="text-sm font-medium text-gray-700">Nota del reporte (espacio amplio, se incluirá en la portada del PDF)</label>
+          <textarea
+            id="report-note"
+            value={reportNote}
+            onChange={e=>setReportNote(e.target.value)}
+            placeholder="Escribe observaciones detalladas, progreso, recomendaciones, acuerdos con la familia, adaptaciones didácticas, etc."
+            className="w-full min-h-[180px] resize-y rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          />
+          <div className="text-xs text-gray-500 flex justify-between"><span>Se guarda automáticamente según la selección actual.</span><span>{reportNote.length} caracteres</span></div>
+        </div>
       </section>
 
-      {/* Gráfico del tema seleccionado */}
+      {/* Gráfico(s) del tema seleccionado */}
       <section className="grid grid-cols-1 gap-4">
         <div className="bg-white rounded-lg border p-3">
           <div className="flex items-center gap-2 mb-2">
@@ -218,42 +372,71 @@ const Reports: React.FC = () => {
           </div>
           {loading ? (
             <Skeleton lines={6} className="mt-2" lineClassName="w-full" />
-          ) : selectedModule === 'lectoescritura' ? (
-            lecto.series.length ? (
-              <BarChartMini
-                series={lecto.series}
-                title="Histórico"
-                onBarHover={makeHoverHandlerMain(lecto.series, 'Lectoescritura')}
-                onLeave={hideTooltip}
-                onBarClick={handleBarClick(lecto.orderAscIds)}
-              />
+          ) : selectionMode === 'single' ? (
+            selectedModule === 'lectoescritura' ? (
+              lecto.series.length ? (
+                <BarChartMini
+                  series={lecto.series}
+                  title="Histórico"
+                  onBarHover={makeHoverHandlerMain(lecto.series, 'Lectoescritura')}
+                  onLeave={hideTooltip}
+                  onBarClick={handleBarClick(lecto.orderAscIds)}
+                />
+              ) : (
+                <p className="text-sm text-gray-600">No hay evaluaciones para esta etapa en Lectoescritura.</p>
+              )
             ) : (
-              <p className="text-sm text-gray-600">No hay evaluaciones para esta etapa en Lectoescritura.</p>
+              mate.series.length ? (
+                <BarChartMini
+                  series={mate.series}
+                  title="Histórico"
+                  onBarHover={makeHoverHandlerMain(mate.series, 'Matemática')}
+                  onLeave={hideTooltip}
+                  onBarClick={handleBarClick(mate.orderAscIds)}
+                />
+              ) : (
+                <p className="text-sm text-gray-600">No hay evaluaciones para esta etapa en Matemática.</p>
+              )
             )
           ) : (
-            mate.series.length ? (
-              <BarChartMini
-                series={mate.series}
-                title="Histórico"
-                onBarHover={makeHoverHandlerMain(mate.series, 'Matemática')}
-                onLeave={hideTooltip}
-                onBarClick={handleBarClick(mate.orderAscIds)}
-              />
-            ) : (
-              <p className="text-sm text-gray-600">No hay evaluaciones para esta etapa en Matemática.</p>
-            )
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {(() => {
+                const selectedIds = selectionMode==='multi' ? multiStudentIds : Object.keys(multiAssessmentsMap);
+                if (!selectedIds.length) return <p className="text-sm text-gray-600">Selecciona estudiantes para comparar.</p>;
+                return selectedIds.map((sid) => {
+                  const student = students.find(s=>s.id===sid);
+                  const list = (multiAssessmentsMap[sid]||[]).filter(a=>a.stage===stage && a.module_id===selectedModule);
+                  const data = buildSeriesAndOrder(selectedModule, list, showCompletion);
+                  if (!data.series.length) return (
+                    <div key={sid} className="border rounded p-2 text-sm text-gray-600">
+                      <div className="font-semibold text-gray-800 mb-1">{student?.full_name || 'Estudiante'}</div>
+                      Sin evaluaciones para esta etapa/tema.
+                    </div>
+                  );
+                  return (
+                    <div key={sid} className="border rounded">
+                      <BarChartMini
+                        series={data.series}
+                        title={student?.full_name || 'Estudiante'}
+                        onLeave={hideTooltip}
+                      />
+                    </div>
+                  );
+                });
+              })()}
+            </div>
           )}
         </div>
       </section>
 
-      {/* Tabla de tareas */}
+      {/* Tabla(s) de tareas */}
       <section className="bg-white rounded-lg border p-4">
         <div className="flex items-center justify-between gap-2 mb-3">
           <div className="flex items-center gap-2">
             <Table className="h-5 w-5 text-blue-600" />
-            <h3 className="font-semibold text-gray-900">Tareas y preguntas — ({selectedModule === 'lectoescritura' ? 'Lectoescritura' : 'Matemática'} / Etapa {activeAssessment?.stage ?? stage}{activeAssessment ? '' : ''})</h3>
+            <h3 className="font-semibold text-gray-900">Tareas y preguntas — ({selectedModule === 'lectoescritura' ? 'Lectoescritura' : 'Matemática'} / Etapa {stage})</h3>
           </div>
-          {activeAssessment && (
+          {selectionMode==='single' && activeAssessment && (
             <button
               type="button"
               className="text-xs text-blue-600 hover:underline"
@@ -264,9 +447,16 @@ const Reports: React.FC = () => {
             </button>
           )}
         </div>
-        {activeAssessment ? (
-          <>
-            <StageTable assessment={activeAssessment} />
+        {selectionMode==='single' ? (
+          activeAssessment ? (
+            <>
+              <StageTable assessment={activeAssessment} />
+              {activeAssessment.notes && (
+                <div className="mt-4 border rounded-md bg-blue-50/40 p-3">
+                  <div className="text-sm font-semibold text-gray-800 mb-1">Nota de la evaluación</div>
+                  <p className="text-sm whitespace-pre-wrap leading-relaxed" style={{ wordBreak:'break-word' }}>{activeAssessment.notes}</p>
+                </div>
+              )}
             {/* Explicación de cada P del tema (dos columnas) */}
             {showAllQuestions && (() => {
               const grouped = groupIndicatorsByBlock(activeAssessment.indicators);
@@ -311,9 +501,38 @@ const Reports: React.FC = () => {
                 </div>
               );
             })()}
-          </>
+            </>
+          ) : (
+            <div className="text-sm text-gray-600">No hay evaluación cargada.</div>
+          )
         ) : (
-          <div className="text-sm text-gray-600">No hay evaluación cargada.</div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {(() => {
+              const selectedIds = selectionMode==='multi' ? multiStudentIds : Object.keys(multiAssessmentsMap);
+              if (!selectedIds.length) return <p className="text-sm text-gray-600">Selecciona estudiantes para ver sus tablas.</p>;
+              return selectedIds.map(sid => {
+                const student = students.find(s=>s.id===sid);
+                const list = (multiAssessmentsMap[sid]||[]).filter(a=>a.stage===stage && a.module_id===selectedModule);
+                const latest = list.sort((a,b)=> new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0];
+                return (
+                  <div key={sid} className="border rounded-md p-2">
+                    <div className="text-sm font-semibold text-gray-800 mb-2">{student?.full_name || 'Estudiante'}</div>
+                    {latest ? (
+                      <>
+                        <StageTable assessment={latest} />
+                        {latest.notes && (
+                          <div className="mt-2 border rounded bg-blue-50/40 p-2">
+                            <div className="text-xs font-semibold mb-1">Nota de la evaluación</div>
+                            <p className="text-xs whitespace-pre-wrap leading-relaxed" style={{ wordBreak:'break-word' }}>{latest.notes}</p>
+                          </div>
+                        )}
+                      </>
+                    ) : <div className="text-sm text-gray-600">Sin evaluación en esta etapa/tema.</div>}
+                  </div>
+                );
+              });
+            })()}
+          </div>
         )}
       </section>
 
@@ -364,6 +583,7 @@ const Reports: React.FC = () => {
             pdfPreviewRef={pdfPreviewRef}
             includeCompletion={showCompletion}
             selectedModule={selectedModule}
+            reportNote={reportNote}
           />
         </Suspense>
       )}

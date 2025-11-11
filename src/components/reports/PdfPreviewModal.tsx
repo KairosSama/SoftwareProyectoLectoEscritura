@@ -22,9 +22,10 @@ interface PdfPreviewModalProps {
   includeCompletion?: boolean;
   // Nuevo: restringir a un único tema y evaluación activa opcional
   selectedModule?: 'lectoescritura'|'matematica';
+  reportNote?: string; // Nota extensa de la docente para incluir en portada
 }
 
-const PdfPreviewModal: React.FC<PdfPreviewModalProps> = ({ isOpen, onClose, stages, toggleStage, assessments, selectedIds, toggleEval, download, pdfPreviewRef, includeCompletion=false, selectedModule }) => {
+const PdfPreviewModal: React.FC<PdfPreviewModalProps> = ({ isOpen, onClose, stages, toggleStage, assessments, selectedIds, toggleEval, download, pdfPreviewRef, includeCompletion=false, selectedModule, reportNote }) => {
   useFocusTrap(pdfPreviewRef as React.RefObject<HTMLElement>, isOpen);
   // Cerrar con Escape para accesibilidad adicional
   const escHandler = useCallback((e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); }, [onClose]);
@@ -73,6 +74,12 @@ const PdfPreviewModal: React.FC<PdfPreviewModalProps> = ({ isOpen, onClose, stag
                         <div className="p-6 space-y-3">
                           <div className="text-xl font-semibold">Reporte de Evaluación</div>
                           <div className="text-xs text-gray-500">Etapa: {st}</div>
+                          {reportNote && (
+                            <div className="border rounded-md p-3 bg-gray-50">
+                              <div className="text-sm font-semibold mb-1">Nota de la docente</div>
+                              <div className="text-xs whitespace-pre-wrap leading-relaxed max-h-40 overflow-auto" style={{ wordBreak: 'break-word' }}>{reportNote}</div>
+                            </div>
+                          )}
                           <div className="grid gap-3">
                             <div className="border rounded-md p-2"><BarChartMini series={series} title={`${(selectedModule??'lectoescritura')==='lectoescritura'?'Lectoescritura':'Matemática'} — Etapa ${st}`} height={160} minWidth={730} /></div>
                           </div>
@@ -86,6 +93,12 @@ const PdfPreviewModal: React.FC<PdfPreviewModalProps> = ({ isOpen, onClose, stag
                         <div className="p-6 space-y-3">
                           <div className="text-sm font-semibold">Tareas y preguntas — Etapa {st}</div>
                           <div className="text-xs text-gray-600">{new Date(a.created_at).toLocaleString()} — {a.module_id.toUpperCase()}</div>
+                          {a.notes && (
+                            <div className="border rounded-md p-2 bg-gray-50">
+                              <div className="text-xs font-semibold mb-1">Nota de la evaluación</div>
+                              <div className="text-xs leading-relaxed whitespace-pre-wrap max-h-32 overflow-auto" style={{ wordBreak:'break-word' }}>{a.notes}</div>
+                            </div>
+                          )}
                           <StageTable assessment={a} variant="pdf" />
                           {/* Lista de preguntas con PN y etiquetas */}
                           {(() => {
