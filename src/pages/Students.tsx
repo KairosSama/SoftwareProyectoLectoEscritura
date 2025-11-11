@@ -4,6 +4,7 @@ import { getStudents, Student } from '../lib/mockData';
 import { supabase } from '../lib/supabase';
 import { Plus, Search, Calendar, FileText, Eye } from 'lucide-react';
 import StudentModal from '../components/students/StudentModal';
+import GroupManager from '../components/students/GroupManager';
 
 function Students() {
   const [students, setStudents] = useState<Student[]>([]);
@@ -87,8 +88,14 @@ function Students() {
         />
       </div>
 
-      {/* Students List */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+      {/* Grupos + Lista de Estudiantes */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Panel de grupos */}
+        <div className="lg:col-span-1">
+          <GroupManager students={students} />
+        </div>
+        {/* Lista de estudiantes */}
+        <div className="lg:col-span-2 bg-white rounded-lg shadow-sm border border-gray-200">
         {filteredStudents.length > 0 ? (
           <div className="divide-y divide-gray-200">
             {filteredStudents.map((student) => (
@@ -172,6 +179,7 @@ function Students() {
             )}
           </div>
         )}
+        </div>
       </div>
 
       {/* Student Modal */}
