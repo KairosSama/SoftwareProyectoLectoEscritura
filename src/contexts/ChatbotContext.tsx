@@ -1,141 +1,219 @@
-import React, { createContext, useContext, useState } from 'react';
-import { useLocation } from 'react-router-dom';
-import { supabase } from '../lib/supabase';
+import React, { createContext, useCallback, useContext, useMemo, useState } from 'react';
+import { v4 as uuid } from 'uuid';
+import * as pdfjsLib from 'pdfjs-dist';
+import { GlobalWorkerOptions } from 'pdfjs-dist';
 
-interface Message {
-  id: string;
-  text: string;
-  sender: 'user' | 'bot';
-  timestamp: Date;
-}
+// Configurar el worker de PDF.js para Vite
+// @ts-ignore
+GlobalWorkerOptions.workerSrc = new URL('pdfjs-dist/build/pdf.worker.mjs', import.meta.url).toString();
 
-interface ChatbotContextType {
+type Message = { id: string; text: string; sender: 'user' | 'bot' };
+
+type ChatbotContextType = {
+  // UI
   isOpen: boolean;
-  messages: Message[];
   toggleChatbot: () => void;
-  sendMessage: (text: string) => void;
+
+  // Mensajería
+  messages: Message[];
+  sendMessage: (text: string, extraContext?: string[]) => Promise<void>;
   uploadDocument: (file: File) => Promise<void>;
+
+  // Límite diario
+  usageLeftToday: number;
+};
+
+export const ChatbotContext = createContext<ChatbotContextType>({} as any);
+
+const DAILY_LIMIT = 5;
+const LIMIT_KEY_PREFIX = 'gemini_chat_uses_';
+
+const todayKey = () => {
+  const d = new Date();
+  return `${LIMIT_KEY_PREFIX}${d.toISOString().slice(0, 10)}`;
+};
+
+function readUsage(): number {
+  if (typeof window === 'undefined') return 0;
+  const raw = localStorage.getItem(todayKey());
+  const n = raw ? parseInt(raw, 10) : 0;
+  return isNaN(n) ? 0 : n;
 }
 
-const ChatbotContext = createContext<ChatbotContextType | undefined>(undefined);
+function increaseUsage() {
+  if (typeof window === 'undefined') return;
+  const n = readUsage();
+  localStorage.setItem(todayKey(), String(n + 1));
+}
 
-export function useChatbot() {
-  const context = useContext(ChatbotContext);
-  if (!context) {
-    throw new Error('useChatbot must be used within a ChatbotProvider');
+async function extractTextFromPdf(file: File, maxPages = 40): Promise<string> {
+  const arrayBuff = await file.arrayBuffer();
+  const loadingTask = pdfjsLib.getDocument({ data: arrayBuff });
+  const pdf = await loadingTask.promise;
+  const total = Math.min(pdf.numPages, maxPages);
+
+  let out = '';
+  for (let i = 1; i <= total; i++) {
+    const page = await pdf.getPage(i);
+    const content = await page.getTextContent();
+    const text = (content.items as any[]).map((it: any) => it.str ?? '').join(' ');
+    out += `\n\n[PDF pág ${i}]\n${text}`;
   }
-  return context;
+  return out.trim();
 }
 
-export function ChatbotProvider({ children }: { children: React.ReactNode }) {
-  const [isOpen, setIsOpen] = useState(false);
+export const ChatbotProvider: React.FC<{
+  children: React.ReactNode;
+  studentMeta?: any;
+  baseContext?: string[];
+}> = ({ children, studentMeta = {}, baseContext = [] }) => {
+  // UI open/close
+  const [isOpen, setIsOpen] = useState<boolean>(true);
+  const toggleChatbot = useCallback(() => setIsOpen(v => !v), []);
+
+  // Mensajes
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
-      text: '¡Hola profesor! Soy el asistente de evaluaciones. Puedes preguntarme sobre procedimientos, indicadores, progreso de estudiantes o subir un PDF para analizarlo.',
       sender: 'bot',
-      timestamp: new Date()
-    }
+      text:
+        '¡Hola profesor! Soy el asistente con Gemini. ' +
+        'Puedo responder sobre los PDFs integrados y los que subas. ' +
+        'Límite: 5 consultas por día.',
+    },
   ]);
-  const location = useLocation();
 
-  const toggleChatbot = () => {
-    setIsOpen(!isOpen);
-  };
-
-  const sendMessage = async (text: string) => {
-    const userMessage: Message = {
-      id: Date.now().toString(),
-      text,
-      sender: 'user',
-      timestamp: new Date()
-    };
-    setMessages(prev => [...prev, userMessage]);
-
-    // Obtener estudiante activo (puedes ajustar esto según tu lógica)
-    let studentId: string | null = null;
-    const match = location.pathname.match(/students\/(\w{8}-\w{4}-\w{4}-\w{4}-\w{12})/);
-    if (match) {
-      studentId = match[1];
-    }
-    let pdfText = '';
-    let studentData = '';
-    if (studentId) {
-      // Obtener texto de PDFs
-      const { data: documents } = await supabase
-        .from('student_documents')
-        .select('extracted_text')
-        .eq('student_id', studentId);
-      pdfText = documents?.map(doc => doc.extracted_text).join('\n') || '';
-      // Obtener datos del estudiante
-      const { data: student } = await supabase
-        .from('students')
-        .select('full_name, diagnosis, birth_date, program_start_date')
-        .eq('id', studentId)
-        .single();
-      if (student) {
-        studentData = `Nombre: ${student.full_name}\nDiagnóstico: ${student.diagnosis}\nNacimiento: ${student.birth_date}\nInicio programa: ${student.program_start_date}`;
-      }
-    }
-
-    // Preparar datos para endpoint QA
-    let botText = 'No se pudo obtener respuesta.';
-    let score: number | undefined = undefined;
-    try {
-      const response = await fetch('/api/hf-qa', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          question: text,
-          studentData,
-          pdfText
-        })
-      });
-      const result = await response.json();
-      if (response.status === 503 && result.loading) {
-        botText = result.answer || 'El modelo se está cargando, intenta nuevamente en unos segundos.';
-      } else {
-        botText = result.answer || botText;
-        score = result.score;
-      }
-    } catch (err) {
-      botText = 'Error al consultar el modelo de QA.';
-    }
-
-    const botResponse: Message = {
-      id: (Date.now() + 1).toString(),
-      text: score !== undefined ? `${botText}\n\nConfianza: ${(score * 100).toFixed(1)}%` : botText,
-      sender: 'bot',
-      timestamp: new Date()
-    };
-    setMessages(prev => [...prev, botResponse]);
-  };
-
-  const uploadDocument = async (file: File) => {
-    const uploadMessage: Message = {
-      id: Date.now().toString(),
-      text: `Documento "${file.name}" subido correctamente. Ahora puedes hacerme preguntas sobre su contenido y te responderé en español.`,
-      sender: 'bot',
-      timestamp: new Date()
-    };
-    setMessages(prev => [...prev, uploadMessage]);
-  };
-
-
-
-  const value = {
-    isOpen,
-    messages,
-    toggleChatbot,
-    sendMessage,
-    uploadDocument
-  };
-
-  return (
-    <ChatbotContext.Provider value={value}>
-      {children}
-    </ChatbotContext.Provider>
+  // Límite
+  const [uploadedContextText, setUploadedContextText] = useState<string>('');
+  const [usageLeftToday, setUsageLeftToday] = useState<number>(
+    Math.max(DAILY_LIMIT - readUsage(), 0)
   );
-}
+
+  const appendMessage = useCallback((m: Message) => {
+    setMessages((prev) => [...prev, m]);
+  }, []);
+
+  const uploadDocument = useCallback(
+    async (file: File) => {
+      const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+      const isTxt = file.type === 'text/plain' || file.name.toLowerCase().endsWith('.txt');
+
+      let extracted = '';
+      if (isPdf) {
+        extracted = await extractTextFromPdf(file, 40);
+      } else if (isTxt) {
+        extracted = await file.text();
+      } else {
+        appendMessage({
+          id: uuid(),
+          sender: 'bot',
+          text: 'Formato no soportado (solo PDF o TXT).',
+        });
+        return;
+      }
+
+      const newChunk = `\n\n[Documento subido: ${file.name}]\n${extracted}`;
+      setUploadedContextText((prev) => (prev + newChunk).slice(0, 30000));
+      appendMessage({
+        id: uuid(),
+        sender: 'bot',
+        text: `Documento "${file.name}" agregado al contexto del chat.`,
+      });
+    },
+    [appendMessage]
+  );
+
+  const sendMessage = useCallback(
+    async (text: string, extraContext: string[] = []) => {
+      if (!text?.trim()) return;
+
+      const used = readUsage();
+      if (used >= DAILY_LIMIT) {
+        appendMessage({
+          id: uuid(),
+          sender: 'bot',
+          text: `Alcanzaste el límite diario de ${DAILY_LIMIT} consultas. Vuelve a intentar mañana.`,
+        });
+        return;
+      }
+
+      const userMsg: Message = { id: uuid(), sender: 'user', text };
+      appendMessage(userMsg);
+
+      const contextChunks = [
+        ...(baseContext || []),
+        uploadedContextText || '',
+        ...(extraContext || []),
+      ].filter(Boolean);
+
+      try {
+        const r = await fetch('/api/gemini-qa', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            question: text,
+            contextChunks,
+            studentMeta,
+          }),
+        });
+
+        if (!r.ok) {
+          const errText = await r.text();
+          appendMessage({
+            id: uuid(),
+            sender: 'bot',
+            text: `Error al consultar el modelo: ${errText}`,
+          });
+          return;
+        }
+
+        const data = await r.json();
+        const answer = data?.answer || 'No obtuve respuesta del modelo.';
+
+        increaseUsage();
+        setUsageLeftToday(Math.max(DAILY_LIMIT - readUsage(), 0));
+
+        appendMessage({ id: uuid(), sender: 'bot', text: answer });
+      } catch (e: any) {
+        appendMessage({
+          id: uuid(),
+          sender: 'bot',
+          text: `Error de red o servidor: ${e?.message ?? e}`,
+        });
+      }
+    },
+    [appendMessage, baseContext, uploadedContextText, studentMeta]
+  );
+
+  const value = useMemo(
+    () => ({
+      isOpen,
+      toggleChatbot,
+      messages,
+      sendMessage,
+      uploadDocument,
+      usageLeftToday
+    }),
+    [isOpen, toggleChatbot, messages, sendMessage, uploadDocument, usageLeftToday]
+  );
+
+  return <ChatbotContext.Provider value={value}>{children}</ChatbotContext.Provider>;
+};
+
+// Hook seguro (no lanza error si el Provider no está montado)
+export const useChatbot = (): ChatbotContextType => {
+  const context = useContext(ChatbotContext);
+  if (!context || !context.sendMessage) {
+    return {
+      isOpen: true,
+      toggleChatbot: () => console.warn('useChatbot(): Provider no montado; toggleChatbot() ignorado'),
+      messages: [],
+      sendMessage: async () => console.warn('useChatbot(): Provider no montado; sendMessage() ignorado'),
+      uploadDocument: async () => console.warn('useChatbot(): Provider no montado; uploadDocument() ignorado'),
+      usageLeftToday: 0,
+    };
+  }
+  return context;
+};
+
+export default ChatbotProvider;

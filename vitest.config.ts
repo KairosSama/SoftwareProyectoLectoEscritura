@@ -3,6 +3,9 @@ import react from '@vitejs/plugin-react';
 
 export default defineConfig({
   plugins: [react() as any],
+  server: {
+    proxy: { '/api': { target: 'http://localhost:8787', changeOrigin: true } }
+  }
   test: {
     environment: 'jsdom',
     globals: true,
@@ -23,24 +26,18 @@ export default defineConfig({
       },
       reportsDirectory: './coverage',
       exclude: [
-        // Dependencias y build outputs
         '**/node_modules/**',
         '**/dist/**',
-        // Archivos de configuración / tooling
         'vitest.setup.ts',
         'vite.config.ts',
         'vitest.config.ts',
         'tailwind.config.js',
         'postcss.config.js',
         'eslint.config.js',
-        // Tipos / env d.ts
         'src/vite-env.d.ts',
-        // Data estática masiva o legacy no sujeta hoy a tests
         'src/lib/assessmentData.ts',
         'src/pages/Reports2.tsx',
-        // Endpoints serverless (sin tests unit en esta fase)
         'api/**',
-        // Páginas aún sin plan de pruebas (dejar sólo Reports.tsx cubierta)
         'src/pages/AllAssessments.tsx',
         'src/pages/AssessmentDetail.tsx',
         'src/pages/AssessmentForm.tsx',
