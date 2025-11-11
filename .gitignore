@@ -32,3 +32,4 @@ coverage/
  
 # Archivos de trabajo locales (no versionar)
 src/pages/Reports2.tsx
+.vercel
